@@ -1,0 +1,6 @@
+include(FindPackageHandleStandardArgs)
+unset(Inference_FOUND)
+
+
+
+find_package_handle_standard_args(Inference DEFAULT_MSG Inference_INCLUDE_DIR Inference_LIBS)

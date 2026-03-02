@@ -1,0 +1,15 @@
+cmake_minimum_required(VERSION 3.10)
+
+set(INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
+find_package(OpenCV)
+if (OpenCV_FOUND)
+message("OPENCV_LIBRARIES: ${OpenCV_LIBRARIES}")
+message("OPENCV_INCLUDE_DIRS: ${OpenCV_INCLUDE_DIRS}")
+include_directories(${OpenCV_INCLUDE_DIRS})
+endif()
+if(INFER_TENSORRT)
+    add_executable(test_mono3d test_mono3d.cpp mono3d.h mono3d.cpp)
+    target_include_directories(test_mono3d PUBLIC ${INCLUDE_DIR})
+    target_link_libraries(test_mono3d PUBLIC inference ${OpenCV_LIBRARIES})
+endif()
+

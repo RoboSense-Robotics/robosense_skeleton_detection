@@ -1,0 +1,3 @@
+add_subdirectory(rally_utils)
+add_subdirectory(rally_core)
+add_subdirectory(rally_common)

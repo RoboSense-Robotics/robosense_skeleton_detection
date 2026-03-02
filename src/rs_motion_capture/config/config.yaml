@@ -1,0 +1,89 @@
+operator: "peter"
+check_mode: false
+calib_mode: false
+debug_mode: true
+ws_center_z: 1.35
+
+glove_type: "noiton"  # noiton or manus_glove
+
+left_hand_z_rot: -120.0
+right_hand_z_rot: 120.0
+
+log:
+  level: INFO
+  log_to_dir: /tmp   # log save dir, if not exist, log will save to /tmp
+
+sensor:
+  calib_path: "/home/sti/Music/super_sensor_sdk_v1/config/calibration.yaml"
+
+
+ros:
+  subscribe:
+    left_ac_camera_topic: /left/rs_camera/rgb
+    left_ac_lidar_topic: /left/rs_lidar/points
+    right_ac_camera_topic: /right/rs_camera/rgb
+    right_ac_lidar_topic: /right/rs_lidar/points
+    noiton_glove_topic: /hand_poses_noiton
+    manus_glove_topic: /hand_poses
+
+    # debug mode
+    left_ac_camera_offline_topic: /rs_camera/left/color/image_raw
+    right_ac_camera_offline_topic: /rs_camera/right/color/image_raw
+
+    left_ac_lidar_offline_topic: /rs_lidar/points
+    right_ac_lidar_offline_topic: /rs_lidar/points
+
+  publish:
+    pose_3d_topic: /pose_detection/pose_3d
+    pose_2d_topic: /pose_detection/pose_2d
+    hand_euler_topic: /pose_detection/hand_euler
+    left_finger_distance_topic: pose_detection/left_finger_distance
+    right_finger_distance_topic: pose_detection/right_finger_distance
+
+  rviz:
+    include: "rviz/rviz.yaml"
+
+pipeline:
+  strategy: OpticalMotionCapture
+  OpticalMotionCapture:
+    optical:
+      strategy: TwoStageOpticalMotionCapture
+      TwoStageOpticalMotionCapture:
+        object_detection:
+          preprocess:
+            xxx: xxx
+          infer:
+            strategy: fp16
+            fp16:
+              engine_file_path:
+                x86_64: model/x86_64/stage1.trt
+                aarch: model/aarch/stage1.trt
+              enable_fp16: true
+              use_managed_memory: false
+              use_unified_memory: true
+              use_cuda_graph: true
+          postprocess:
+            xxx: xxx
+
+        pose_detection:
+          preprocess:
+            xxx: xxx
+          infer:
+            strategy: fp16
+            fp16:
+              engine_file_path:
+                x86_64: model/x86_64/stage2.trt
+                aarch: model/aarch/stage2.trt
+              enable_fp16: true
+              use_managed_memory: false
+              use_unified_memory: true
+              use_cuda_graph: true
+          postprocess:
+            kalman:
+              1d_Q: 0.01
+              1d_R: 1
+              2d_Q: 10
+              2d_R: 0.1
+
+
+

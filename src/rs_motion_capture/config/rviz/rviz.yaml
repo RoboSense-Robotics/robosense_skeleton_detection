@@ -1,0 +1,46 @@
+enable: true
+change_coord: true
+save_root_path: /media/local/handeye/vis/
+left_ac_vis:
+  enable: true
+  left_ac_od:
+    enable: false
+    topic: /left/od
+  left_ac_pd:
+    enable: true
+    topic: /left/pd
+    dump: false
+    dump_dir: debug2  # ${save_root_path}/${dump_dir}
+
+  left_ac_lidar:
+    enable: false
+    topic: /left/lidar
+
+  left_ac_3d:
+    enable: true
+    topic: /left/pose_markers
+
+right_ac_vis:
+  enable: true
+  right_ac_od:
+    enable: false
+    topic: /right/od
+  right_ac_pd:
+    enable: true
+    topic: /right/pd
+    dump: false
+    dump_dir: debug2  # ${save_root_path}/${dump_dir}
+
+  right_ac_lidar:
+    enable: false
+    topic: /right/lidar
+
+  right_ac_3d:
+    enable: true
+    topic: /right/pose_markers
+
+fusion_vis:
+  enable: true
+  fusion_3d:
+    enable: true
+    topic: /pose_detection/pose_markers
