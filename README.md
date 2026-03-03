@@ -21,8 +21,8 @@ colcon build
 source install/setup.bash
 ```
 
-> ⚠️ [!注意]
->> robosense_ac_driver 内部有 robosense_msgs 包，编译后会生成相关的消息类型，并且本项目也需要 robosense_msgs 包中的消息类型，因此在编译本项目之前，请确保 source 了 robosense_ac_driver 的安装环境。
+> ⚠️ 注意
+> robosense_ac_driver 内部有 robosense_msgs 包，编译后会生成相关的消息类型，并且本项目也需要 robosense_msgs 中的消息类型，因此在编译本项目之前，请确保 source 了 robosense_ac_driver 的安装环境。
 
 ## 安装步骤
 
@@ -33,15 +33,31 @@ git clone git@github.com:RoboSense-Robotics/robosense_skeleton_detection.git
 cd robosense_skeleton_detection
 ```
 
-### 2. 模型转换 (必须步骤)
+### 2. 模型转换
 
 项目使用 TensorRT 进行推理加速，需要将 ONNX 模型转换为 TRT 模型。
 
-#### 2.1 ONNX 模型位置
+在下载模型前，请先创建所需目录：
 
-ONNX 模型位于 `src/rs_motion_capture/model/onnx/` 目录下:
-- `dynamic_rtmdet_s_coco_640x640_20231209.onnx` - 目标检测模型 (Stage 1)
-- `dynamic_end2end2_key26.onnx` - 姿态估计模型 (Stage 2)
+```bash
+mkdir -p src/rs_motion_capture/model/onnx
+mkdir -p src/rs_motion_capture/model/x86_64
+```
+
+#### 2.1 下载 ONNX 模型
+
+本仓库中不包含模型文件，请先下载：
+- [dynamic_rtmdet_s_coco_640x640_20231209.onnx](https://cdn.robosense.cn/models/skeleton_detection/dynamic_rtmdet_s_coco_640x640_20231209.onnx)
+- [dynamic_end2end2_key26.onnx](https://cdn.robosense.cn/models/skeleton_detection/dynamic_end2end2_key26.onnx)
+
+下载完成后，将文件放置到 `src/rs_motion_capture/model/onnx/`
+
+目录结构应如下：
+```
+src/rs_motion_capture/model/onnx/
+├── dynamic_rtmdet_s_coco_640x640_20231209.onnx  # 目标检测模型 (Stage 1)
+└── dynamic_end2end2_key26.onnx                  # 姿态估计模型 (Stage 2)
+```
 
 #### 2.2 使用 TensorRT 转换模型
 
@@ -54,16 +70,10 @@ export PATH=$TENSORRT_DIR/bin:$PATH
 export LD_LIBRARY_PATH=$TENSORRT_DIR/lib:$LD_LIBRARY_PATH
 
 # 转换 Stage1 模型 (目标检测)
-trtexec --onnx=src/rs_motion_capture/model/onnx/dynamic_rtmdet_s_coco_640x640_20231209.onnx \
-        --saveEngine=src/rs_motion_capture/model/x86_64/stage1.trt \
-        --fp16 \
-        --workspace=4096
+trtexec --onnx=src/rs_motion_capture/model/onnx/dynamic_rtmdet_s_coco_640x640_20231209.onnx --saveEngine=src/rs_motion_capture/model/x86_64/stage1.trt --fp16 --workspace=4096
 
 # 转换 Stage2 模型 (姿态估计)
-trtexec --onnx=src/rs_motion_capture/model/onnx/dynamic_end2end2_key26.onnx \
-        --saveEngine=src/rs_motion_capture/model/x86_64/stage2.trt \
-        --fp16 \
-        --workspace=4096
+trtexec --onnx=src/rs_motion_capture/model/onnx/dynamic_end2end2_key26.onnx --saveEngine=src/rs_motion_capture/model/x86_64/stage2.trt --fp16 --workspace=4096
 ```
 
 #### 2.3 模型对应关系
@@ -82,8 +92,8 @@ trtexec --onnx=src/rs_motion_capture/model/onnx/dynamic_end2end2_key26.onnx \
 
 ### 3. 编译项目
 
-> ⚠️ [!注意]
->> 在编译本项目之前，请确保 source 了 robosense_ac_driver 的安装环境
+> ⚠️ 注意
+> 在编译本项目之前，请确保 source 了 robosense_ac_driver 的安装环境
 
 ```bash
 colcon build --cmake-args -DTENSORRT_RELEASE_PATH=<Your TensorRT Root Directory>
