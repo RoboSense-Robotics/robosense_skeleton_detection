@@ -61,6 +61,19 @@ src/rs_motion_capture/model/onnx/
 
 #### 2.2 使用 TensorRT 转换模型
 
+**下载 TensorRT 压缩包（可选）**
+
+如果你还没有安装 TensorRT 可以尝试使用本仓库提供的压缩包，包含了 trtexec 工具用于模型转换以及相关的库文件。本仓库提供的 TensorRT 为免安装版本，解压后即可使用 trtexec 进行模型转换。
+
+👉 下载地址  
+[TensorRT-10.8.0.43.Linux.x86_64-gnu.cuda-12.8.tar.gz](https://cdn.robosense.cn/third_party/TensorRT-10.8.0.43.Linux.x86_64-gnu.cuda-12.8.tar.gz)
+
+下载完成后，将压缩包解压到任意目录，
+
+```bash
+tar -xvf TensorRT-10.8.0.43.Linux.x86_64-gnu.cuda-12.8.tar.gz
+```
+
 **使用 trtexec 命令行工具**
 
 ```bash
