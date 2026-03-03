@@ -105,7 +105,7 @@ trtexec --onnx=src/rs_motion_capture/model/onnx/dynamic_end2end2_key26.onnx --sa
 
 ### 3. 编译项目
 
-> ⚠️ 注意
+> ⚠️ 注意，
 > 在编译本项目之前，请确保 source 了 robosense_ac_driver 的安装环境
 
 ```bash
@@ -124,7 +124,7 @@ colcon build --cmake-args -DTENSORRT_RELEASE_PATH=<Your TensorRT Root Directory>
 
 ## 运行
 
-> ⚠️ 注意
+> ⚠️ 注意，
 > 在运行之前，请确保先启动了 robosense_ac_driver 节点发布 AC2 传感器数据
 
 ```bash
