@@ -124,6 +124,9 @@ colcon build --cmake-args -DTENSORRT_RELEASE_PATH=<Your TensorRT Root Directory>
 
 ## 运行
 
+> ⚠️ 注意
+> 在运行之前，请确保先启动了 robosense_ac_driver 节点发布 AC2 传感器数据
+
 ```bash
 source install/setup.bash
 ros2 launch rs_motion_capture motion_capture_node_launch.py collector:=zed calib_mode:=false
