@@ -15,9 +15,7 @@
 #include <sensor_msgs/msg/detail/point_cloud2__struct.hpp>
 #include <sensor_msgs/msg/temperature.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
-// #include "robosense_msgs/msg/rs_image.hpp"
-// #include "robosense_msgs/msg/rs_point_cloud.hpp"
-// #include "robosense_msgs/msg/rs_compressed_image.hpp"
+
 #include "std_msgs/msg/string.hpp"
 #include <cv_bridge/cv_bridge.h>
 
@@ -80,8 +78,7 @@ private:
 
   rclcpp::SubscriptionBase::SharedPtr left_ac_camera_sub_;
   rclcpp::SubscriptionBase::SharedPtr right_ac_camera_sub_;
-  // rclcpp::Subscription<robosense_msgs::msg::RsPointCloud>::SharedPtr left_ac_lidar_sub_;
-  // rclcpp::Subscription<robosense_msgs::msg::RsPointCloud>::SharedPtr right_ac_lidar_sub_;
+
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr left_ac_lidar_debug_sub_;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr right_ac_lidar_debug_sub_;
   rclcpp::Subscription<geometry_msgs::msg::PoseArray>::SharedPtr noiton_hand_pose_sub_;

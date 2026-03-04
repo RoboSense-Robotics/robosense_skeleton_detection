@@ -8,11 +8,11 @@ namespace robosense {
 namespace motion_capture {
 
 void PipelineInterface::init() {
-  AINFO << name() << ": start init...";
+  spdlog::info("start init...");
   bool calib_mode = rally::ConfigureManager::getInstance().getCfgNode()["calib_mode"].as<bool>();
   bool check_mode = rally::ConfigureManager::getInstance().getCfgNode()["check_mode"].as<bool>();
   if (calib_mode || check_mode) {
-    AINFO << name() << ": Check/Calibration mode is enabled, set to OpticalMotionCapture.";
+    spdlog::info("Check/Calibration mode is enabled, set to OpticalMotionCapture.");
     pipeline_impl_ptr_.reset(BasePipelineRegister::getInstanceByName("OpticalMotionCapture"));
     pipeline_impl_ptr_->init();
     return;
@@ -21,14 +21,14 @@ void PipelineInterface::init() {
   std::string strategy = pipeline_node["strategy"].as<std::string>();
   if (!BasePipelineRegister::isValid(strategy)) {
     const auto &all_instance = BasePipelineRegister::getAllInstances();
-    AINFO << name() << ": support strategy as follows";
+    spdlog::info("support strategy as follows");
     for (size_t i = 0; i < all_instance.size(); ++i) {
-      AINFO << all_instance[i]->name();
+      spdlog::info("{}", all_instance[i]->name());
     }
   }
   pipeline_impl_ptr_.reset(BasePipelineRegister::getInstanceByName(strategy));
   pipeline_impl_ptr_->init();
-  AINFO << name() << ": finish init.";
+  spdlog::info("finish init.");
 }
 
 void PipelineInterface::start() {

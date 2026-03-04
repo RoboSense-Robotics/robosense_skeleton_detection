@@ -11,7 +11,7 @@ namespace robosense {
 namespace motion_capture {
 
 void ObjectDetectionPostprocess::init(const YAML::Node& cfg_node) {
-  AINFO << name() << ": start init...";
+  spdlog::info("start init...");
   img_attr_.image_width_ = SensorManager::getInstance().getWidth(rally::CameraEnum::left_ac_camera);
   img_attr_.image_height_ = SensorManager::getInstance().getHeight(rally::CameraEnum::left_ac_camera);
   img_attr_.model_input_width_ = 640;
@@ -38,18 +38,18 @@ void ObjectDetectionPostprocess::init(const YAML::Node& cfg_node) {
 #endif
 
   time_recorder_ptr_ = std::make_shared<TimeRecorder>(name());
-  AINFO << name() << ": finish init.";
+  spdlog::info("finish init.");
 }
 
 void ObjectDetectionPostprocess::process(const Msg::Ptr &msg_ptr) {
   time_recorder_ptr_->tic();
-  AINFO << name() << ": start process...";
+  spdlog::info("start process...");
   // 获取左右两个AC1检测出来的操作员
   float* left_output = bindings_ptr_->od_bindings_host.output;
   float* right_output = bindings_ptr_->od_bindings_host.output + model_output_dim * model_output_num;
   process_single_image(msg_ptr, left_output, rally::CameraEnum::left_ac_camera);
   process_single_image(msg_ptr, right_output, rally::CameraEnum::right_ac_camera);
-  AINFO << name() << ": finish process.";
+  spdlog::info("finish process.");
   time_recorder_ptr_->toc();
 }
 

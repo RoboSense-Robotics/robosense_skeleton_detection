@@ -8,7 +8,7 @@ namespace robosense {
 namespace motion_capture {
 
 void HybridOpticalInertialMotionCapture::init() {
-  AINFO << name() << ": start init...";
+  spdlog::info("start init...");
   // init sensor config
   auto config_node = rally::ConfigureManager::getInstance().getCfgNode();
   SensorManager::getInstance().init(config_node["sensor"]);
@@ -95,46 +95,37 @@ void HybridOpticalInertialMotionCapture::init() {
     msg_ptr->seq = this->seq_;
     this->seq_ = (this->seq_ == UINT32_MAX) ? 0 : (this->seq_ + 1);
     double lidar_ts = rally::toSeconds(msg_ptr->timestamp);
-    AINFO << "------------------------------------ start perception "
-            << std::fixed << std::setprecision(6) << lidar_ts
-            << " [seq: " << msg_ptr->seq << "] "
-            << " [delta: " << rally::getNowInSeconds() - lidar_ts << "] "
-            << " ------------------------------------";
-    AINFO << "===== [timestamp] and [frame_id] as follows ===== ";
+    spdlog::info("------------------------------------ start perception {:.6f} [seq: {}] [delta: {:.6f}] ------------------------------------", lidar_ts, msg_ptr->seq, rally::getNowInSeconds() - lidar_ts);
+    spdlog::info("===== [timestamp] and [frame_id] as follows =====");
     for (const auto& iter : msg_ptr->input_msg_ptr->image_map) {
       double ts = rally::toSeconds(iter.second->timestamp);
-      AINFO << std::fixed << std::setprecision(6) << ts << " ["
-              << rally::kCameraEnum2NameMap.at(iter.first) << "]";
+      spdlog::info("{:.6f} [{}]", ts, rally::kCameraEnum2NameMap.at(iter.first));
     }
     for (const auto& iter : msg_ptr->input_msg_ptr->lidar_map) {
       double ts = rally::toSeconds(iter.second->timestamp);
-      AINFO << std::fixed << std::setprecision(6) << ts << " ["
-              << rally::kLidarEnum2NameMap.at(iter.first) << "]";
+      spdlog::info("{:.6f} [{}]", ts, rally::kLidarEnum2NameMap.at(iter.first));
     }
     if (msg_ptr->input_msg_ptr->hand_joints_pose) {
       double ts = rally::toSeconds(msg_ptr->input_msg_ptr->hand_joints_pose->timestamp);
-      AINFO << std::fixed << std::setprecision(6) << ts << " [hand_joints_pose]";
+      spdlog::info("{:.6f} [hand_joints_pose]", ts);
     }
     if (msg_ptr->input_msg_ptr->hand_joints_pose2) {
       double ts = rally::toSeconds(msg_ptr->input_msg_ptr->hand_joints_pose2->timestamp);
-      AINFO << std::fixed << std::setprecision(6) << ts << " [hand_joints_pose2]";
+      spdlog::info("{:.6f} [hand_joints_pose2]", ts);
     }
-    AINFO << "================================================= ";
+    spdlog::info("=================================================");
     sync_lat_ptr_->lat(msg_ptr->timestamp);
     optical_motion_capture_worker_ptr_->add(msg_ptr);
   };
   sync_ptr_->regSynCallback(sync_cb_func);
-  AINFO << name() << ": finish init.";
+  spdlog::info("finish init.");
 }
 
 void HybridOpticalInertialMotionCapture::addSensorData(const std::string &type, const Image::Ptr &data) {
   uint64_t timestamp = data->timestamp;
   double now = rally::getNowInSeconds();
   double delta = now - rally::toSeconds(timestamp);
-  AINFO << std::fixed << std::setprecision(6) << name()
-        << " receive " << type << " time: " << now
-        << ", header time: " << rally::toSeconds(timestamp)
-        << ", delta = " << delta << "s";
+  spdlog::info("receive {} time: {:.6f}, header time: {:.6f}, delta = {:.6f}s", type, now, rally::toSeconds(timestamp), delta);
   AnyMsg::Ptr any_msg_ptr(new AnyMsg);
   any_msg_ptr->frame_id = type;
   any_msg_ptr->timestamp = timestamp;
@@ -147,10 +138,7 @@ void HybridOpticalInertialMotionCapture::addSensorData(const std::string &type, 
   uint64_t timestamp = data->timestamp;
   double now = rally::getNowInSeconds();
   double delta = now - rally::toSeconds(timestamp);
-  AINFO << std::fixed << std::setprecision(6) << name()
-        << " receive " << type << " time: " << now
-        << ", header time: " << rally::toSeconds(timestamp)
-        << ", delta = " << delta << "s";
+  spdlog::info("receive {} time: {:.6f}, header time: {:.6f}, delta = {:.6f}s", type, now, rally::toSeconds(timestamp), delta);
   AnyMsg::Ptr any_msg_ptr(new AnyMsg);
   any_msg_ptr->frame_id = type;
   any_msg_ptr->timestamp = timestamp;
@@ -163,10 +151,7 @@ void HybridOpticalInertialMotionCapture::addSensorData(const std::string &type, 
   uint64_t timestamp = data->timestamp;
   double now = rally::getNowInSeconds();
   double delta = now - rally::toSeconds(timestamp);
-  AINFO << std::fixed << std::setprecision(6) << name()
-        << " receive " << type << " time: " << now
-        << ", header time: " << rally::toSeconds(timestamp)
-        << ", delta = " << delta << "s";
+  spdlog::info("receive {} time: {:.6f}, header time: {:.6f}, delta = {:.6f}s", type, now, rally::toSeconds(timestamp), delta);
   AnyMsg::Ptr any_msg_ptr(new AnyMsg);
   any_msg_ptr->frame_id = type;
   any_msg_ptr->timestamp = timestamp;
@@ -184,10 +169,7 @@ void HybridOpticalInertialMotionCapture::addSensorData(const std::string &type, 
   uint64_t timestamp = data->timestamp;
   double now = rally::getNowInSeconds();
   double delta = now - rally::toSeconds(timestamp);
-  AINFO << std::fixed << std::setprecision(6) << name()
-         << " receive " << type << " time: " << now
-         << ", header time: " << rally::toSeconds(timestamp)
-         << ", delta = " << delta << "s";
+  spdlog::info("receive {} time: {:.6f}, header time: {:.6f}, delta = {:.6f}s", type, now, rally::toSeconds(timestamp), delta);
   AnyMsg::Ptr any_msg_ptr(new AnyMsg);
   any_msg_ptr->frame_id = type;
   any_msg_ptr->timestamp = timestamp;

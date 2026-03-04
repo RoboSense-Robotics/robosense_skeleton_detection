@@ -11,7 +11,7 @@
 #include <string>
 #include <iomanip>
 #include "rally/utils/utils.h"
-#include <rs_log/init.h>
+#include <spdlog/spdlog.h>
 
 namespace robosense {
 namespace motion_capture {
@@ -48,9 +48,7 @@ public:
 
     // 4. std
     if (cnt % 1 == 0) {
-      AINFO << std::fixed << std::setprecision(3) << title_ << " cnt : " << cnt << ": min : " << min_val
-              << " ms, max : " << max_val << " ms, "
-              << "mean : " << mean_val << " ms, cur : " << time_micro << " ms";
+      spdlog::info("{} cnt : {}: min : {:.3f} ms, max : {:.3f} ms, mean : {:.3f} ms, cur : {:.3f} ms", title_, cnt, min_val, max_val, mean_val, time_micro);
     }
   }
 
@@ -74,9 +72,7 @@ public:
     latancy_sum_val += time_micro;
     latancy_cnt += 1;
     latancy_mean_val = latancy_sum_val / latancy_cnt;
-    AINFO << std::fixed << std::setprecision(3) << title_ << " cnt : " << latancy_cnt << ": min : " << latancy_min_val
-            << " ms, max : " << latancy_max_val << " ms, "
-            << "mean : " << latancy_mean_val << " ms, cur : " << time_micro << " ms, trigger msg ts: " << rally::toSeconds(sensor_timestamp);
+    spdlog::info("{} cnt : {}: min : {:.3f} ms, max : {:.3f} ms, mean : {:.3f} ms, cur : {:.3f} ms, trigger msg ts: {}", title_, latancy_cnt, latancy_min_val, latancy_max_val, latancy_mean_val, time_micro, rally::toSeconds(sensor_timestamp));
   }
 
 public:

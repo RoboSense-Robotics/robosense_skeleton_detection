@@ -4,7 +4,7 @@ namespace robosense {
 namespace motion_capture {
 
 void InfraredMotionCapture::init(const YAML::Node &cfg_node) {
-  AINFO << name() << ": start init...";
+  spdlog::info("start init...");
 
   const auto &global_cfg_node =
       rally::ConfigureManager::getInstance().getCfgNode();
@@ -33,7 +33,7 @@ InfraredMotionCapture::calculateGlovePose(const Msg::Ptr &msg_ptr) {
   Eigen::Vector3f left_position = Eigen::Vector3f::Zero();
   Eigen::Quaternionf left_rotation = Eigen::Quaternionf::Identity();
   if (!msg_ptr->use_glove) {
-    AERROR << "Infra-red mode must be fitted with gloves";
+    spdlog::error("Infra-red mode must be fitted with gloves");
   }
 
   if ("manus" == glove_type_) {
@@ -96,7 +96,7 @@ InfraredMotionCapture::calculateGlovePose(const Msg::Ptr &msg_ptr) {
     left_rotation = Eigen::Quaternionf(left_R);
     left_rotation.normalize();
   } else {
-    AERROR << name() << ": unsupported glove type: " << glove_type_;
+    spdlog::error("unsupported glove type: {}", glove_type_);
   }
 
   return {{right_position, right_rotation}, {left_position, left_rotation}};

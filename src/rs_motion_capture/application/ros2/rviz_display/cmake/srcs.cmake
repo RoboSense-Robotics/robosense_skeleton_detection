@@ -16,7 +16,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(pcl_conversions REQUIRED)
-find_package(rs_log REQUIRED)
+find_package(spdlog REQUIRED)
 
 foreach (dir ${CUR_SUB_DIR})
     file(GLOB_RECURSE tmp_srcs ${dir}/*.cpp ${dir}/*.h)
@@ -34,8 +34,9 @@ target_include_directories(${CUR_LIB}
 target_link_libraries(${CUR_LIB}
         PUBLIC
         motion_capture
+        spdlog::spdlog
         ${cv_bridge_LIBRARIES}
         #        sensor_msgs
 #        geometry_msgs
         )
-ament_target_dependencies(${CUR_LIB} PUBLIC rclcpp sensor_msgs geometry_msgs visualization_msgs cv_bridge pcl_conversions rs_log)
+ament_target_dependencies(${CUR_LIB} PUBLIC rclcpp sensor_msgs geometry_msgs visualization_msgs cv_bridge pcl_conversions)

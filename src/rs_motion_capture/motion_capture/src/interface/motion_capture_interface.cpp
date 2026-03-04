@@ -16,9 +16,9 @@ void MotionCaptureInterface::init(const YAML::Node& cfg_node) {
   }
   if (!BaseMotionCaptureRegister::isValid(strategy)) {
     const auto &all_instance = BaseMotionCaptureRegister::getAllInstances();
-    AINFO << name() << ": support strategy as follows";
+    spdlog::info("support strategy as follows");
     for (size_t i = 0; i < all_instance.size(); ++i) {
-      AINFO << all_instance[i]->name();
+      spdlog::info("{}", all_instance[i]->name());
     }
   }
   motion_capture_impl_ptr_.reset(BaseMotionCaptureRegister::getInstanceByName(strategy));

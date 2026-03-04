@@ -8,7 +8,7 @@ namespace robosense {
 namespace motion_capture {
 
 void BoneCalibration::init() {
-  AINFO << name() << ": start init...";
+  spdlog::info("start init...");
   auto cfg_node = rally::ConfigureManager::getInstance().getCfgNode();
   std::string collector = cfg_node["operator"].as<std::string>();
   calibration_file_save_path_map_[rally::CameraEnum::left_ac_camera] = std::string(PROJECT_PATH) + "/config/bone/calib_bone_front_left_" + collector + ".yaml";
@@ -20,11 +20,11 @@ void BoneCalibration::init() {
   calib_bone_sum_len_map_[rally::CameraEnum::left_ac_camera] = std::array<float, 14>{0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
   calib_bone_sum_len_map_[rally::CameraEnum::right_ac_camera] = std::array<float, 14>{0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
   calib_bone_default_ = std::array<float, 14>{0.56, 0.26, 0.26, 0.56, 0.26, 0.26, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-  AINFO << name() << ": finish init.";
+  spdlog::info("finish init.");
 }
 
 void BoneCalibration::process(const Msg::Ptr& msg_ptr) {
-  AINFO << name() << ": start process...";
+  spdlog::info("start process...");
 
   float final_percent = (static_cast<float>(valid_calib_cnt_map_[rally::CameraEnum::left_ac_camera]) + 
   static_cast<float>(valid_calib_cnt_map_[rally::CameraEnum::right_ac_camera])) / calib_max_cnt_ * 50.f;
@@ -33,16 +33,16 @@ void BoneCalibration::process(const Msg::Ptr& msg_ptr) {
   if (msg_ptr->internal_result_ptr->camera_arm_key_points_map[rally::CameraEnum::left_ac_camera].empty() ||
       msg_ptr->internal_result_ptr->camera_arm_key_points_map[rally::CameraEnum::right_ac_camera].empty()) {
     if (msg_ptr->internal_result_ptr->camera_arm_key_points_map[rally::CameraEnum::left_ac_camera].empty()) {
-      RWARN << name() << ": left arm key points are empty, skip calibration.";
+      spdlog::warn("left arm key points are empty, skip calibration.");
     }
     if (msg_ptr->internal_result_ptr->camera_arm_key_points_map[rally::CameraEnum::right_ac_camera].empty()) {
-      RWARN << name() << ": right arm key points are empty, skip calibration.";
+      spdlog::warn("right arm key points are empty, skip calibration.");
     }
     return;
   }
   calibSingleAC(msg_ptr, rally::CameraEnum::left_ac_camera);
   calibSingleAC(msg_ptr, rally::CameraEnum::right_ac_camera);
-  AINFO << name() << ": finish process.";
+  spdlog::info("finish process.");
 }
 
 void BoneCalibration::calibSingleAC(const Msg::Ptr& msg_ptr, rally::CameraEnum camera_enum) {
@@ -55,15 +55,11 @@ void BoneCalibration::calibSingleAC(const Msg::Ptr& msg_ptr, rally::CameraEnum c
       calib_bone_len_average[i] = calib_bone_sum_len_map_[camera_enum][i] / valid_calib_cnt_map_[camera_enum];
     }
     // 打印结果
-    AINFO << name() << ": " << rally::kCameraEnum2NameMap.at(camera_enum) << " calibration completed. average bone lengths: "
-          << calib_bone_len_average[0] << " "
-          << calib_bone_len_average[1] << " "
-          << calib_bone_len_average[2] << " "
-          << calib_bone_len_average[3] << " "
-          << calib_bone_len_average[4] << " "
-          << calib_bone_len_average[5] << " "
-          << calib_bone_len_average[6] << " "
-          << calib_bone_len_average[7];
+    spdlog::info("{} calibration completed. average bone lengths: {} {} {} {} {} {} {} {}",
+          rally::kCameraEnum2NameMap.at(camera_enum),
+          calib_bone_len_average[0], calib_bone_len_average[1], calib_bone_len_average[2],
+          calib_bone_len_average[3], calib_bone_len_average[4], calib_bone_len_average[5],
+          calib_bone_len_average[6], calib_bone_len_average[7]);
     // 保存到文件
     YAML::Node node;
     // 将 std::array 存储为 YAML 数组
@@ -77,29 +73,29 @@ void BoneCalibration::calibSingleAC(const Msg::Ptr& msg_ptr, rally::CameraEnum c
     return;
   } else if (valid_calib_cnt_map_[camera_enum] > calib_max_cnt_) {
     msg_ptr->internal_result_ptr->calib_finish_map[camera_enum] = true;
-    AINFO << name() << ": " << rally::kCameraEnum2NameMap.at(camera_enum) <<" 人体骨骼标定数据已保存到: " << calibration_file_save_path_map_[camera_enum];
+    spdlog::info("{} 人体骨骼标定数据已保存到: {}", rally::kCameraEnum2NameMap.at(camera_enum), calibration_file_save_path_map_[camera_enum]);
     return;
   } else if (calib_cnt_map_[camera_enum] < 200) {
-    AINFO << name() << 
-          ": " << rally::kCameraEnum2NameMap.at(camera_enum) << " 准备开始标定，将身体保持以下姿势, 双手呈45度打开... " << static_cast<int>(percent) << "%\n" <<
+    spdlog::info("{} 准备开始标定，将身体保持以下姿势, 双手呈45度打开... {}%\n"
           "     O     \n"
           "   / | \\   \n"
           "  /  |  \\  \n"
           " /   |   \\ \n"
           "    / \\    \n"
           "    | |   \n"
-          "    | |   \n";    
+          "    | |   \n",
+          rally::kCameraEnum2NameMap.at(camera_enum), static_cast<int>(percent));    
           return;
   } else {
-    AINFO << name() << 
-          ": " << rally::kCameraEnum2NameMap.at(camera_enum) << " 将身体保持以下姿势, 双手呈45度打开... " << static_cast<int>(percent) << "%\n" <<
+    spdlog::info("{} 将身体保持以下姿势, 双手呈45度打开... {}%\n"
           "     O     \n"
           "   / | \\   \n"
           "  /  |  \\  \n"
           " /   |   \\ \n"
           "    / \\    \n"
           "    | |   \n"
-          "    | |   \n";
+          "    | |   \n",
+          rally::kCameraEnum2NameMap.at(camera_enum), static_cast<int>(percent));
     const auto& camera_arm_key_points = msg_ptr->internal_result_ptr->camera_arm_key_points_map[camera_enum];
 
     bool valid = true;
@@ -112,7 +108,7 @@ void BoneCalibration::calibSingleAC(const Msg::Ptr& msg_ptr, rally::CameraEnum c
       float len = pi.distance(pj);
       float default_len = calib_bone_default_[k];
       if ((len > default_len + 0.56) || (len < default_len - 0.56)) {
-        AWARN << name() << ": " << rally::kCameraEnum2NameMap.at(camera_enum) << " 检测到关节序号：" << i <<" 和关节序号 "<< j <<" 异常关节长度 "<< len <<" 请保持静止";
+        spdlog::warn("{} 检测到关节序号：{} 和关节序号 {} 异常关节长度 {} 请保持静止", rally::kCameraEnum2NameMap.at(camera_enum), i, j, len);
         valid = false;
         break;
       }

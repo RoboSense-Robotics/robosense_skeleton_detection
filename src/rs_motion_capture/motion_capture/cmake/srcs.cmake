@@ -13,7 +13,7 @@ endforeach ()
 enable_language(CUDA)
 
 find_package(Ceres REQUIRED)
-find_package(rs_log REQUIRED)
+find_package(spdlog REQUIRED)
 
 add_library(${CUR_LIB} SHARED
         ${CUR_SRCS}
@@ -28,10 +28,11 @@ target_link_libraries(${CUR_LIB}
         rally_common
         rally_core
         rs_inference
+        spdlog::spdlog
         ${CERES_LIBRARIES}
         )
 
-ament_target_dependencies(${CUR_LIB} PUBLIC rs_log)
+
 
 target_compile_options(${CUR_LIB} PRIVATE 
             "$<$<COMPILE_LANGUAGE:CUDA>:-gencode=arch=compute_80,code=sm_80>"

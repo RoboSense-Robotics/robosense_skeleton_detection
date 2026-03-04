@@ -6,7 +6,7 @@
 #define POSE_DETECTION_PIPELINE_INTERFACE_H
 
 #include "motion_capture/base/base_pipeline.h"
-#include <rs_log/init.h>
+#include <spdlog/spdlog.h>
 
 namespace robosense {
 namespace motion_capture {

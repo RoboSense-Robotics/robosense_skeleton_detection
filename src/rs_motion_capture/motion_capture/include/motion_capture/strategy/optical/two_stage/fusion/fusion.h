@@ -7,7 +7,7 @@
 
 #include <ceres/ceres.h>
 #include "motion_capture/common/message.h"
-#include <rs_log/init.h>
+#include <spdlog/spdlog.h>
 
 namespace robosense {
 namespace motion_capture {

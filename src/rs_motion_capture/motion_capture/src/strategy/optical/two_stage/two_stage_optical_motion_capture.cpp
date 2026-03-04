@@ -8,7 +8,7 @@ namespace robosense {
 namespace motion_capture {
 
 void TwoStageOpticalMotionCapture::init(const YAML::Node& cfg_node) {
-  AINFO << name() << ": start init...";
+  spdlog::info("start init...");
   YAML::Node od_cfg_node = cfg_node["object_detection"];
   YAML::Node pd_cfg_node = cfg_node["pose_detection"];
   YAML::Node fusion_cfg_node = cfg_node["fusion"];
@@ -40,12 +40,12 @@ void TwoStageOpticalMotionCapture::init(const YAML::Node& cfg_node) {
 
   time_recorder_ptr_ = std::make_shared<TimeRecorder>("TwoStageOpticalMotionCapture");
 
-  AINFO << name() << ": finish init.";
+  spdlog::info("finish init.");
 }
 
 void TwoStageOpticalMotionCapture::process(const Msg::Ptr& msg_ptr) {
   time_recorder_ptr_->tic();
-  AINFO << name() << ": start process...";
+  spdlog::info("start process...");
   // Process object detection
   object_detection_ptr_->process(msg_ptr);
 
@@ -60,7 +60,7 @@ void TwoStageOpticalMotionCapture::process(const Msg::Ptr& msg_ptr) {
   } else {
     pose_fusion_optimization_ptr_->process(msg_ptr);
   }
-  AINFO << name() << ": finish process.";
+  spdlog::info("finish process.");
   time_recorder_ptr_->toc();
 }
 

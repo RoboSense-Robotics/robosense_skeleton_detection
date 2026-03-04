@@ -9,25 +9,25 @@ namespace robosense {
 namespace motion_capture {
 
 void CheckCalibration::init(const YAML::Node& cfg_node) {
-  AINFO << name() << ": start init...";
+  spdlog::info("start init...");
 
   result_save_path_ = std::string(PROJECT_PATH) + "/config/sensor/check_result.yaml";
 
   time_recorder_ptr_ = std::make_shared<TimeRecorder>(name());
-  AINFO << name() << ": finish init.";
+  spdlog::info("finish init.");
 }
 
 void CheckCalibration::process(const Msg::Ptr &msg_ptr) {
   time_recorder_ptr_->tic();
-  AINFO << name() << ": start process...";
+  spdlog::info("start process...");
   
   if (msg_ptr->internal_result_ptr->world_arm_key_points_map[rally::CameraEnum::left_ac_camera].empty() ||
       msg_ptr->internal_result_ptr->world_arm_key_points_map[rally::CameraEnum::right_ac_camera].empty()) {
     if (msg_ptr->internal_result_ptr->camera_arm_key_points_map[rally::CameraEnum::left_ac_camera].empty()) {
-      RWARN << name() << ": left arm key points are empty, skip calibration.";
+      spdlog::warn("left arm key points are empty, skip calibration.");
     }
     if (msg_ptr->internal_result_ptr->camera_arm_key_points_map[rally::CameraEnum::right_ac_camera].empty()) {
-      RWARN << name() << ": right arm key points are empty, skip calibration.";
+      spdlog::warn("right arm key points are empty, skip calibration.");
     }
     return;
   }
@@ -44,21 +44,21 @@ void CheckCalibration::process(const Msg::Ptr &msg_ptr) {
     // 检查标定结果
     CheckResult();
     msg_ptr->internal_result_ptr->check_finish = true;
-    AINFO << name() << ": " << " 双AC标定结果已检查完成";
+    spdlog::info(" 双AC标定结果已检查完成");
     return;  
   }
 
-  AINFO << name() << ": " << " ==========================================================================";
-  AINFO << name() << ": " << " =========================================================================="; 
-  AINFO << name() << ": " << " ==========================================================================";
-  AINFO << name() << ": " << " ==========================================================================";
-  AINFO << name() << ": " << " ==========================================================================";
-  AINFO << name() << ": " << " =====================请保持姿势: " << pose_status_[cur_status_id_] << "==================";
-  AINFO << name() << ": " << " ==========================================================================";
-  AINFO << name() << ": " << " ==========================================================================";
-  AINFO << name() << ": " << " ==========================================================================";  
-  AINFO << name() << ": " << " ==========================================================================";
-  AINFO << name() << ": " << " =========================================================================="; 
+  spdlog::info(" ==========================================================================");
+  spdlog::info(" =========================================================================="); 
+  spdlog::info(" ==========================================================================");
+  spdlog::info(" ==========================================================================");
+  spdlog::info(" ==========================================================================");
+  spdlog::info(" =====================请保持姿势: {}==================", pose_status_[cur_status_id_]);
+  spdlog::info(" ==========================================================================");
+  spdlog::info(" ==========================================================================");
+  spdlog::info(" ==========================================================================");  
+  spdlog::info(" ==========================================================================");
+  spdlog::info(" =========================================================================="); 
 
   get_pose_frame_points(pose_status_[cur_status_id_], msg_ptr);
   cur_frame_ += 1;
@@ -67,7 +67,7 @@ void CheckCalibration::process(const Msg::Ptr &msg_ptr) {
 }
 
 void CheckCalibration::CheckResult() {
-  AINFO << name() << ": " << " 开始检查检测结果";
+  spdlog::info(" 开始检查检测结果");
 
   // 检查双AC之间的标定误差
   size_t frame_num = 0;
@@ -129,10 +129,10 @@ void CheckCalibration::CheckResult() {
   node["world_center_y"] = world_center_y;
   node["world_center_z"] = world_center_z;
 
-  RWARN << name() << ": " << " ac_error: " << ac_error;
-  RWARN << name() << ": " << " dis_x: " << dis_average_x << " dis_y: " << dis_average_y << " dis_z: " << dis_average_z;
-  RWARN << name() << ": " << " check_status: " << check_status;
-  RWARN << name() << ": " << " center_x: " << world_center_x << " center_y: " << world_center_y << " center_z: " << world_center_z;
+  spdlog::warn(" ac_error: {}", ac_error);
+  spdlog::warn(" dis_x: {} dis_y: {} dis_z: {}", dis_average_x, dis_average_y, dis_average_z);
+  spdlog::warn(" check_status: {}", check_status);
+  spdlog::warn(" center_x: {} center_y: {} center_z: {}", world_center_x, world_center_y, world_center_z);
 
   std::ofstream fout(result_save_path_);
   fout << node;
@@ -143,7 +143,7 @@ void CheckCalibration::get_pose_frame_points(const std::string& pose_status,
                                               const Msg::Ptr &msg_ptr) {
     if (cur_frame_ == 0) {
       // 发送语音提示信息
-      AINFO << name() << ": " << " 当前检查状态为: " << pose_status;
+      spdlog::info(" 当前检查状态为: {}", pose_status);
     }
 
     if ((cur_frame_ >= before_frame_end_num_) && (cur_frame_ < key_frame_end_num_)) {
@@ -154,7 +154,7 @@ void CheckCalibration::get_pose_frame_points(const std::string& pose_status,
       size_t size_right = world_right_key_points_vec.size();
       size_t size_left = world_left_key_points_vec.size();
       if ((size_right != 9) || (size_left != 9)) {
-        RWARN << name() << ": " << "exist unvalid detect result!";
+        spdlog::warn("exist unvalid detect result!");
         return;
       }
       
@@ -174,10 +174,10 @@ void CheckCalibration::get_pose_frame_points(const std::string& pose_status,
       for (int i: compute_pose_id_) {
         float cur_ac_error = world_right_key_points_vec[i].distance(world_left_key_points_vec[i]);
         if (cur_ac_error > 1.0) {
-          RWARN << name() << ": " << " 存在左右AC误差较大的点";
+          spdlog::warn(" 存在左右AC误差较大的点");
           cur_ac_error = 1.0;
         }
-        RWARN << name() << ": " << i << " error: " << cur_ac_error;
+        spdlog::warn("{} error: {}", i, cur_ac_error);
         ac_error += cur_ac_error;
       }
       ac_error /= compute_pose_id_.size();

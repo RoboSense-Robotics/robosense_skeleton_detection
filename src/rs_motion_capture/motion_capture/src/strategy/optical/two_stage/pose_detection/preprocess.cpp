@@ -10,7 +10,7 @@ namespace robosense {
 namespace motion_capture {
 
 void PoseDetectionPreprocess::init(const YAML::Node& cfg_node) {
-  AINFO << name() << ": start init...";
+  spdlog::info("start init...");
   img_attr_.image_width_ = SensorManager::getInstance().getWidth(rally::CameraEnum::left_ac_camera);
   img_attr_.image_height_ = SensorManager::getInstance().getHeight(rally::CameraEnum::left_ac_camera);
   img_attr_.half_width_ = img_attr_.image_width_ / 2;
@@ -19,19 +19,19 @@ void PoseDetectionPreprocess::init(const YAML::Node& cfg_node) {
   img_attr_.model_input_height_ = 384;
   aspect_ratio_ = static_cast<float>(img_attr_.model_input_width_) / img_attr_.model_input_height_;
   time_recorder_ptr_ = std::make_shared<TimeRecorder>(name());
-  AINFO << name() << ": finish init.";
+  spdlog::info("finish init.");
 }
 
 void PoseDetectionPreprocess::process(const Msg::Ptr &msg_ptr) {
   time_recorder_ptr_->tic();
-  AINFO << name() << ": start process...";
+  spdlog::info("start process...");
   if (msg_ptr->internal_result_ptr->is_person_detected_map[rally::CameraEnum::left_ac_camera] == 0 ||
       msg_ptr->internal_result_ptr->is_person_detected_map[rally::CameraEnum::right_ac_camera] == 0) {
     if (msg_ptr->internal_result_ptr->is_person_detected_map[rally::CameraEnum::left_ac_camera] == 0) {
-      RWARN << name() << ": left ac camera not detected, skipping pose detection!";
+      spdlog::warn("left ac camera not detected, skipping pose detection!");
     }
     if (msg_ptr->internal_result_ptr->is_person_detected_map[rally::CameraEnum::right_ac_camera] == 0) {
-      RWARN << name() << ": right ac camera not detected, skipping pose detection!";
+      spdlog::warn("right ac camera not detected, skipping pose detection!");
     }
     return;
   }
@@ -39,7 +39,7 @@ void PoseDetectionPreprocess::process(const Msg::Ptr &msg_ptr) {
   process_single_image(msg_ptr, rally::CameraEnum::left_ac_camera);
   process_single_image(msg_ptr, rally::CameraEnum::right_ac_camera);
   cudaStreamSynchronize(stream_);
-  AINFO << name() << ": finish process.";
+  spdlog::info("finish process.");
   time_recorder_ptr_->toc();
 }
 

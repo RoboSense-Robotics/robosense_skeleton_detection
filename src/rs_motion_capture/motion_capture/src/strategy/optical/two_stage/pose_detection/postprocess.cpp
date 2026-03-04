@@ -9,7 +9,7 @@ namespace robosense {
 namespace motion_capture {
 
 void PoseDetectionPostprocess::init(const YAML::Node& cfg_node) {
-  AINFO << name() << ": start init...";
+  spdlog::info("start init...");
   img_attr_.image_width_ = SensorManager::getInstance().getWidth(rally::CameraEnum::left_ac_camera);
   img_attr_.image_height_ = SensorManager::getInstance().getHeight(rally::CameraEnum::left_ac_camera);
   img_attr_.half_width_ = img_attr_.image_width_ / 2;
@@ -21,7 +21,7 @@ void PoseDetectionPostprocess::init(const YAML::Node& cfg_node) {
   glove_type_ = global_cfg_node["glove_type"].as<std::string>();
 
   time_recorder_ptr_ = std::make_shared<TimeRecorder>(name());
-  AINFO << name() << ": finish init.";
+  spdlog::info("finish init.");
   YAML::Node kalman_config = cfg_node["kalman"];
 
   filters_2d_map_[rally::CameraEnum::left_ac_camera] = std::vector<KalmanFilter2D>();
@@ -99,7 +99,7 @@ void PoseDetectionPostprocess::getAllKeyPts(const Msg::Ptr& msg_ptr,
   for (const auto& idx : all_key_pts_idx_) {
     if (!res[idx].is_valid()) {
       key_pts_valid = false;
-      AWARN << name() <<" 时间戳 "<<msg_ptr->timestamp<<"  point idx " <<idx<<" invalid, score: "<<res[idx].score<<" x: "<<res[idx].x<<" y: "<<res[idx].y<<" img width: "<<img_attr_.image_width_ << " img height: "<<img_attr_.image_height_;
+      spdlog::warn("时间戳 {} point idx {} invalid, score: {} x: {} y: {} img width: {} img height: {}", msg_ptr->timestamp, idx, res[idx].score, res[idx].x, res[idx].y, img_attr_.image_width_, img_attr_.image_height_);
       break;
     }
   }
@@ -147,14 +147,14 @@ std::vector<Point2f> PoseDetectionPostprocess::getImageCoordKeyPts(const Msg::Pt
   // 获取人体中点
   if (use_aruco_) {
     if (msg_ptr->internal_result_ptr->qr_code_is_detected_map[camera_enum] == 1) {
-      AINFO << name() << ": 相机检测到二维码, 使用二维码中点作为人体中点";
+      spdlog::info("相机检测到二维码, 使用二维码中点作为人体中点");
       img_arm_key_pts.push_back(msg_ptr->internal_result_ptr->center_map[camera_enum]);
       // 保存上一帧的二维码中点
       last_aruco_pt_map_[camera_enum] = msg_ptr->internal_result_ptr->center_map[camera_enum];
     } else {
       // 没有检测到二维码，分两种情况：如果上一帧检测到三角，使用上一帧二维码的仿射变换；否则使用当前帧检测的左右髋中点
       if (last_triangle_pt_valid_map_[camera_enum] == 1) {
-        AINFO << name() << ": 相机没有检测到二维码, 使用仿射变换将上一帧的 ArUco 中心点映射到当前帧";
+        spdlog::info("相机没有检测到二维码, 使用仿射变换将上一帧的 ArUco 中心点映射到当前帧");
         auto last_triangle_point = last_triangle_pt_map_[camera_enum];
         cv::Mat M = cv::getAffineTransform(last_triangle_point, cur_triangle_point);
         auto last_aruco_pt = last_aruco_pt_map_[camera_enum];
@@ -165,7 +165,7 @@ std::vector<Point2f> PoseDetectionPostprocess::getImageCoordKeyPts(const Msg::Pt
         last_aruco_pt_map_[camera_enum].x = output_points[0].x;
         last_aruco_pt_map_[camera_enum].y = output_points[0].y;
       } else {
-        RERROR << name() << ": 相机没有检测到二维码, 使用当前帧检测的左右髋中点作为人体中点";
+        spdlog::error("相机没有检测到二维码, 使用当前帧检测的左右髋中点作为人体中点");
         img_arm_key_pts.emplace_back(mid_point.x, mid_point.y);
         last_aruco_pt_map_[camera_enum].x = mid_point.x;
         last_aruco_pt_map_[camera_enum].y = mid_point.y;
@@ -351,21 +351,21 @@ std::vector<Point3f> PoseDetectionPostprocess::getWorldCoordKeyPts(const Msg::Pt
 
 void PoseDetectionPostprocess::process(const Msg::Ptr &msg_ptr) {
   time_recorder_ptr_->tic();
-  AINFO << name() << ": start process...";
+  spdlog::info("start process...");
   if (msg_ptr->internal_result_ptr->is_person_detected_map[rally::CameraEnum::left_ac_camera] == 0 ||
       msg_ptr->internal_result_ptr->is_person_detected_map[rally::CameraEnum::right_ac_camera] == 0) {
     if (msg_ptr->internal_result_ptr->is_person_detected_map[rally::CameraEnum::left_ac_camera] == 0) {
-      RWARN << name() << ": left ac camera not detected, skipping pose detection!";
+      spdlog::warn("left ac camera not detected, skipping pose detection!");
     }
     if (msg_ptr->internal_result_ptr->is_person_detected_map[rally::CameraEnum::right_ac_camera] == 0) {
-      RWARN << name() << ": right ac camera not detected, skipping pose detection!";
+      spdlog::warn("right ac camera not detected, skipping pose detection!");
     }
     return;
   }
 
   processSingleImpl(msg_ptr, rally::CameraEnum::left_ac_camera);
   processSingleImpl(msg_ptr, rally::CameraEnum::right_ac_camera);
-  AINFO << name() << ": finish process.";
+  spdlog::info("finish process.");
   time_recorder_ptr_->toc();
 }
 
@@ -450,7 +450,7 @@ PoseDetectionPostprocess::calculateEndEffectorPose(const Msg::Ptr &msg_ptr, cons
         left_rotation = Eigen::Quaternionf(left_R);
         left_rotation.normalize();
       } else {
-        RERROR << name() << ": unsupported glove type: " << glove_type_;
+        spdlog::error("unsupported glove type: {}", glove_type_);
       }
     } else {
       right_rotation = computeHandRotationFromBone(p1, p2, p3);

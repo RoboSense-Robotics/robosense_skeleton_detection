@@ -5,7 +5,7 @@
 #include "production/ros2_production.h"
 #include "rviz_display/rviz_display.h"
 #include "motion_capture/utils/logger/logger.h"
-#include "rs_log/init.h"
+#include <spdlog/spdlog.h>
 
 using namespace robosense::motion_capture;
 
@@ -51,12 +51,12 @@ int main(int argc, char **argv) {
   /*          cfg_node["log"]["level"].as<std::string>(),*/
   /*          "async");*/
   
-  robosense::log::Init("motion_capture");
-  AINFO << "Use config path: " << config_file;
-  AINFO << "Collector: " << collector;
-  AINFO << "Check mode: " << check_mode;
-  AINFO << "Calib mode: " << calib_mode;
-  AINFO << "ws_center_z: " << ws_center_z;
+
+  spdlog::info("Use config path: {}", config_file);
+  spdlog::info("Collector: {}", collector);
+  spdlog::info("Check mode: {}", check_mode);
+  spdlog::info("Calib mode: {}", calib_mode);
+  spdlog::info("ws_center_z: {}", ws_center_z);
 
   // read world center file to cfg
   std::string world_center_file = std::string(PROJECT_PATH) + "/config/sensor/check_result.yaml";
@@ -67,14 +67,14 @@ int main(int argc, char **argv) {
       cfg_node["world_center_y"] = check_result_info["world_center_y"].as<float>();
       cfg_node["world_center_z"] = check_result_info["world_center_z"].as<float>();
     } catch (...) {
-      AERROR << "read check result failed: " << world_center_file;
+      spdlog::error("read check result failed: {}", world_center_file);
       cfg_node["world_center_x"] = -0.2;
       cfg_node["world_center_y"] = 0.0;
       cfg_node["world_center_z"] = 0.6;
     }
-    AINFO << "world_center_x: " << cfg_node["world_center_x"];
-    AINFO << "world_center_y: " << cfg_node["world_center_y"];
-    AINFO << "world_center_z: " << cfg_node["world_center_z"];
+    spdlog::info("world_center_x: {}", cfg_node["world_center_x"]);
+      spdlog::info("world_center_y: {}", cfg_node["world_center_y"]);
+      spdlog::info("world_center_z: {}", cfg_node["world_center_z"]);
   } else {
     cfg_node["world_center_x"] = -0.0;
     cfg_node["world_center_y"] = 0.0;
@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
   if (check_mode) {
     auto check_cb_func = [](const Msg::Ptr &msg_ptr) {
         if (msg_ptr->internal_result_ptr->check_finish) {
-          AINFO << "Check Calibration finished, exiting...";
+          spdlog::info("Check Calibration finished, exiting...");
           rclcpp::shutdown();
         }
     };
@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
     auto calib_cb_func = [](const Msg::Ptr &msg_ptr) {
         if (msg_ptr->internal_result_ptr->calib_finish_map.at(rally::CameraEnum::left_ac_camera) &&
             msg_ptr->internal_result_ptr->calib_finish_map.at(rally::CameraEnum::right_ac_camera)) {
-          AINFO << "Calibration finished, exiting...";
+          spdlog::info("Calibration finished, exiting...");
           rclcpp::shutdown();
         }
     };

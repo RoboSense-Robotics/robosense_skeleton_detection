@@ -13,7 +13,7 @@ namespace robosense {
 namespace motion_capture {
 
 void ObjectDetectionPreprocess::init(const YAML::Node& cfg_node) {
-  AINFO << name() << ": start init...";
+  spdlog::info("start init...");
   // 获取畸变map
   img_attr_.image_width_ = SensorManager::getInstance().getWidth(rally::CameraEnum::left_ac_camera);
   img_attr_.image_height_ = SensorManager::getInstance().getHeight(rally::CameraEnum::left_ac_camera);
@@ -71,12 +71,12 @@ void ObjectDetectionPreprocess::init(const YAML::Node& cfg_node) {
 
   time_recorder_ptr_ = std::make_shared<TimeRecorder>(name());
   copy_vis_time_recorder_ptr_ = std::make_shared<TimeRecorder>(name()+"-copy_vis");
-  AINFO << name() << ": finish init.";
+  spdlog::info("finish init.");
 }
 
 void ObjectDetectionPreprocess::process(const Msg::Ptr &msg_ptr) {
   time_recorder_ptr_->tic();
-  AINFO << name() << ": start process...";
+  spdlog::info("start process...");
   // 去畸变，并将去畸变图像指针保存到msg_ptr
 #ifdef __aarch64__
   memcpy(distort_img_ptr_, msg_ptr->input_msg_ptr->image_map.at(rally::CameraEnum::left_ac_camera)->data.data, img_attr_.single_rgb_img_size_);
@@ -179,7 +179,7 @@ void ObjectDetectionPreprocess::process(const Msg::Ptr &msg_ptr) {
     right_display.copyTo(msg_ptr->internal_result_ptr->right_undistort_image);
     copy_vis_time_recorder_ptr_->toc();
   }
-  AINFO << name() << ": finish process.";
+  spdlog::info("finish process.");
   time_recorder_ptr_->toc();
 }
 

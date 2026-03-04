@@ -6,7 +6,7 @@
 #define MOTION_CAPTURE_INTERFACE_MOTION_CAPTURE_INTERFACE_H
 
 #include "motion_capture/base/base_motion_capture.h"
-#include <rs_log/init.h>
+#include <spdlog/spdlog.h>
 
 namespace robosense {
 namespace motion_capture {

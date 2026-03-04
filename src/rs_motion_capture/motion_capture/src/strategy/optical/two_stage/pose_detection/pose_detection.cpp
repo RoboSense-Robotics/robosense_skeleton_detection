@@ -8,7 +8,7 @@ namespace robosense {
 namespace motion_capture {
 
 void PoseDetection::init(const YAML::Node& cfg_node) {
-  AINFO << name() << ": start init...";
+  spdlog::info("start init...");
   // init infer
   YAML::Node infer_node = cfg_node["infer"];
   std::string strategy = infer_node["strategy"].as<std::string>();
@@ -17,7 +17,7 @@ void PoseDetection::init(const YAML::Node& cfg_node) {
 #else
   std::string model_path = std::string(PROJECT_PATH) + "/" + infer_node[strategy]["engine_file_path"]["x86_64"].as<std::string>();
 #endif
-  AINFO << name() << ": load model " << model_path;
+  spdlog::info("load model {}", model_path);
   inference::InferOptions init_options;
   init_options.model_format = inference::ModelFormat::kENGINE;
   init_options.save_path = model_path;
@@ -46,19 +46,19 @@ void PoseDetection::init(const YAML::Node& cfg_node) {
 
   time_recorder_ptr_ = std::make_shared<TimeRecorder>(name());
   infer_time_recorder_ptr_ = std::make_shared<TimeRecorder>(name() + "Infer");
-  AINFO << name() << ": finish init...";
+  spdlog::info("finish init...");
 }
 
 void PoseDetection::process(const Msg::Ptr &msg_ptr) {
   time_recorder_ptr_->tic();
-  AINFO << name() << ": start process...";
+  spdlog::info("start process...");
   if (msg_ptr->internal_result_ptr->is_person_detected_map[rally::CameraEnum::left_ac_camera] == 0 ||
       msg_ptr->internal_result_ptr->is_person_detected_map[rally::CameraEnum::right_ac_camera] == 0) {
     if (msg_ptr->internal_result_ptr->is_person_detected_map[rally::CameraEnum::left_ac_camera] == 0) {
-      RWARN << name() << ": left ac camera not detected, skipping pose detection!";
+      spdlog::warn("left ac camera not detected, skipping pose detection!");
     }
     if (msg_ptr->internal_result_ptr->is_person_detected_map[rally::CameraEnum::right_ac_camera] == 0) {
-      RWARN << name() << ": right ac camera not detected, skipping pose detection!";
+      spdlog::warn("right ac camera not detected, skipping pose detection!");
     }
     return;
   }
@@ -71,7 +71,7 @@ void PoseDetection::process(const Msg::Ptr &msg_ptr) {
   cudaStreamSynchronize(stream_);
   infer_time_recorder_ptr_->toc();
   postprocess_ptr_->process(msg_ptr);
-  AINFO << name() << ": finish process...";
+  spdlog::info("finish process...");
   time_recorder_ptr_->toc();
 }
 

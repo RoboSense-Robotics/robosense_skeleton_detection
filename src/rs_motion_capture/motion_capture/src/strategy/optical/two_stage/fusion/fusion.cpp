@@ -9,7 +9,7 @@ namespace robosense {
 namespace motion_capture {
 
 void PoseFusionOptimization::init(const YAML::Node& cfg_node) {
-  AINFO << name() << ": start init...";
+  spdlog::info("start init...");
   // 加载骨骼标定文件
   const auto& node = rally::ConfigureManager::getInstance().getCfgNode();
   std::string collector = node["operator"].as<std::string>();
@@ -49,23 +49,23 @@ void PoseFusionOptimization::init(const YAML::Node& cfg_node) {
   world_x_bias_ = world_center_x;
   world_y_bias_ = world_center_y;
   world_z_bias_ = world_center_z- ws_center_z;
-  AINFO << name() << ": world_x_bias_: " << world_x_bias_;
-  AINFO << name() << ": world_y_bias_: " << world_y_bias_;
-  AINFO << name() << ": world_z_bias_: " << world_z_bias_;
+  spdlog::info("world_x_bias_: {}", world_x_bias_);
+  spdlog::info("world_y_bias_: {}", world_y_bias_);
+  spdlog::info("world_z_bias_: {}", world_z_bias_);
   time_recorder_ptr_ = std::make_shared<TimeRecorder>(name());
-  AINFO << name() << ": finish init.";
+  spdlog::info("finish init.");
 }
 
 void PoseFusionOptimization::process(const Msg::Ptr &msg_ptr) {
   time_recorder_ptr_->tic();
-  AINFO << name() << ": start process...";
+  spdlog::info("start process...");
   if (msg_ptr->internal_result_ptr->world_arm_key_points_map[rally::CameraEnum::left_ac_camera].empty() ||
       msg_ptr->internal_result_ptr->world_arm_key_points_map[rally::CameraEnum::right_ac_camera].empty()) {
     if (msg_ptr->internal_result_ptr->world_arm_key_points_map[rally::CameraEnum::left_ac_camera].empty()) {
-      AWARN << name() << " left arm key points are empty, skip fusion optimization.";
+      spdlog::warn("left arm key points are empty, skip fusion optimization.");
     }
     if (msg_ptr->internal_result_ptr->world_arm_key_points_map[rally::CameraEnum::right_ac_camera].empty()) {
-      AWARN << name() << " right arm key points are empty, skip fusion optimization.";
+      spdlog::warn("right arm key points are empty, skip fusion optimization.");
     }
     pose3d_fusion_history_.clear();
     msg_ptr->valid_flag = false;
@@ -99,13 +99,13 @@ void PoseFusionOptimization::process(const Msg::Ptr &msg_ptr) {
     point.z -= world_z_bias_;
   }
 
-  // AINFO << "X: " << pose3d_optimized_origin[1].x << " Y: " << pose3d_optimized_origin[1].y << " Z: " << pose3d_optimized_origin[1].z;
+
 
   auto end_effector_poses_origin = calculateEndEffectorPose(msg_ptr, pose3d_optimized_origin);
   msg_ptr->output_msg_ptr->arm_key_points = pose3d_optimized_origin;
   msg_ptr->output_msg_ptr->end_pose = end_effector_poses_origin;
 
-  AINFO << name() << ": finish process.";
+  spdlog::info("finish process.");
   time_recorder_ptr_->toc();
 }
 
@@ -373,7 +373,7 @@ PoseFusionOptimization::calculateEndEffectorPose(const Msg::Ptr &msg_ptr, const 
         left_rotation = Eigen::Quaternionf(left_R);
         left_rotation.normalize();
       } else {
-        RERROR << name() << ": unsupported glove type: " << glove_type_;
+        spdlog::error("unsupported glove type: {}", glove_type_);
       }
     } else {
       right_rotation = computeHandRotationFromBone(p1, p2, p3);

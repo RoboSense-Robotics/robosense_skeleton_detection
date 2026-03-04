@@ -4,13 +4,13 @@
 
 #include "production/ros2_production.h"
 #include <Eigen/src/Geometry/Quaternion.h>
-#include <rs_log/common/log.h>
+#include <spdlog/spdlog.h>
 #include <cv_bridge/cv_bridge.h>
 namespace robosense {
 namespace motion_capture {
 
 void Ros2Production::init() {
-  AINFO << name() << ": start init...";
+  spdlog::info("start init...");
   const auto& cfg_node = rally::ConfigureManager::getInstance().getCfgNode();
   const auto& ros_cfg_node = cfg_node["ros"];
   auto subscribe_node = ros_cfg_node["subscribe"];
@@ -28,8 +28,8 @@ void Ros2Production::init() {
   right_rot.y() = 0;
   right_rot.z() = std::sin(right_z_rot/180*M_PI / 2);
 
-  AINFO << "left rot wxyz: "<< left_rot.w() <<" "<<left_rot.x()<<" "<<left_rot.y()<<" "<<left_rot.z();
-  AINFO << "right rot wxyz: "<< right_rot.w() <<" "<<right_rot.x()<<" "<<right_rot.y()<<" "<<right_rot.z();
+  spdlog::info("left rot wxyz: {} {} {} {}", left_rot.w(), left_rot.x(), left_rot.y(), left_rot.z());
+  spdlog::info("right rot wxyz: {} {} {} {}", right_rot.w(), right_rot.x(), right_rot.y(), right_rot.z());
 
   if (cfg_node["debug_mode"].as<bool>())
   {
@@ -55,7 +55,7 @@ void Ros2Production::init() {
   }
 
   std::string glove_type = cfg_node["glove_type"].as<std::string>();
-  AINFO << glove_type << std::endl;
+  spdlog::info("glove type: {}", glove_type);
   if ("noiton" == glove_type) {
     noiton_hand_pose_sub_ = node_ptr_->create_subscription<geometry_msgs::msg::PoseArray>(
         subscribe_node["noiton_glove_topic"].as<std::string>(),
@@ -130,7 +130,7 @@ void Ros2Production::init() {
   right_camera_convert_recorder_ = std::make_shared<TimeRecorder>("right camera convert");
   left_lidar_convert_recorder_ = std::make_shared<TimeRecorder>("left lidar convert");
   right_lidar_convert_recorder_ = std::make_shared<TimeRecorder>("right lidar convert");
-  AINFO << name() << ": finish init.";
+  spdlog::info("finish init...");
 }
 
 void Ros2Production::leftCameraDebugCallback(
@@ -347,7 +347,7 @@ void Ros2Production::publishPose2d(const Msg::Ptr &msg_ptr) {
 
   // 发布消息
   pose_2d_pub_->publish(std::move(pose_array_msg));
-  AINFO << name() << ": publish 2d pose.";
+  spdlog::info("publish 2d pose.");
 }
 
 
@@ -403,7 +403,7 @@ void Ros2Production::publishPose(const Msg::Ptr &msg_ptr) {
   pose_array_msg->poses.push_back(left_effector_pose);
   // 发布消息
   pose_3d_pub_->publish(std::move(pose_array_msg));
-  AINFO << name() << ": publish pose.";
+  spdlog::info("publish 3d pose.");
 }
 
 void Ros2Production::publishHandEuler(const Msg::Ptr &msg_ptr) {
@@ -414,7 +414,7 @@ void Ros2Production::publishHandEuler(const Msg::Ptr &msg_ptr) {
     handeuler_msg.position.push_back(v);
   }
   hand_euler_pub_->publish(handeuler_msg);
-  AINFO << name() << ": publish hand euler.";
+  spdlog::info("publish hand euler.");
 }
 
 void Ros2Production::publishFingerDistance(const Msg::Ptr &msg_ptr) {
@@ -428,7 +428,7 @@ void Ros2Production::publishFingerDistance(const Msg::Ptr &msg_ptr) {
   right_msg->temperature = msg_ptr->output_msg_ptr->right_finger_distance;
   left_finger_distance_pub_->publish(std::move(left_msg));
   right_finger_distance_pub_->publish(std::move(right_msg));
-  AINFO << name() << ": publish finger distance.";
+  spdlog::info("publish finger distance.");
 }
 
 void Ros2Production::publishCheckHci(const Msg::Ptr &msg_ptr) {

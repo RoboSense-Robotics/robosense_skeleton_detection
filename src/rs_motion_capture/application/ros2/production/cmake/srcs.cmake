@@ -19,7 +19,7 @@ find_package(cv_bridge REQUIRED)
 
 #set(robosense_msgs_DIR "/mnt/1T/msg_ws/install/robosense_msgs/share/robosense_msgs/cmake")
 find_package(robosense_msgs REQUIRED)
-find_package(rs_log REQUIRED)
+find_package(spdlog REQUIRED)
 
 foreach (dir ${CUR_SUB_DIR})
     file(GLOB_RECURSE tmp_srcs ${dir}/*.cpp ${dir}/*.h)
@@ -37,6 +37,7 @@ target_include_directories(${CUR_LIB}
 target_link_libraries(${CUR_LIB}
         PUBLIC
         motion_capture
+        spdlog::spdlog
         ${cv_bridge_LIBRARIES}
 
         #        robosense_msgs__rosidl_typesupport_cpp
@@ -44,7 +45,7 @@ target_link_libraries(${CUR_LIB}
 #        sensor_msgs
 #        geometry_msgs
         )
-ament_target_dependencies(${CUR_LIB} PUBLIC rclcpp sensor_msgs geometry_msgs pcl_conversions robosense_msgs cv_bridge rs_log)
+ament_target_dependencies(${CUR_LIB} PUBLIC rclcpp sensor_msgs geometry_msgs pcl_conversions robosense_msgs cv_bridge)
 
 
 
