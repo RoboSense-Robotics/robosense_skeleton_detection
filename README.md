@@ -1,6 +1,6 @@
 # ROBOSENSE SKELETON DETECTION
 
-[ Chinese Version](README_CN.md)
+[ 中文版本 ](README_CN.md)
 
 A ROS2 project for human skeleton detection based on point cloud and image data from ROBOSENSE AC2 sensor, accelerated with TensorRT. This project contains a ROS2 node that can extract human skeleton information from AC2 data in real-time and publish relevant ROS2 messages.
 
