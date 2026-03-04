@@ -14,6 +14,18 @@ A ROS2 project for human skeleton detection based on point cloud and image data 
 
 ## Dependencies
 
+Before building this project, please ensure that the necessary development libraries are installed and the driver environment is correctly configured.
+
+### 1. System Library Installation
+
+This project requires the `spdlog` logging library. Please run the following command to install it:
+
+```bash
+sudo apt install libspdlog-dev
+```
+
+### 2. Driver Node Configuration
+
 Requires the [robosense_ac_driver](https://github.com/RoboSense-Robotics/robosense_ac_driver) node to publish AC2 sensor data. If not compiled yet, please download and compile the driver source code first.
 
 ```bash

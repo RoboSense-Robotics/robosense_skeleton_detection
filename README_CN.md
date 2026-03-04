@@ -14,6 +14,18 @@
 
 ## 依赖项
 
+在编译本项目之前，请确保系统中已安装必要的开发库，并正确配置了驱动环境。
+
+### 1. 系统库安装
+
+本项目依赖 `spdlog` 日志库，请执行以下命令安装：
+
+```bash
+sudo apt install libspdlog-dev
+```
+
+### 2. 驱动节点配置
+
 需要 [robosense_ac_driver](https://github.com/RoboSense-Robotics/robosense_ac_driver) 节点发布 AC2 传感器数据，如果尚未编译，请先下载该驱动源码并编译。
 
 ```bash
