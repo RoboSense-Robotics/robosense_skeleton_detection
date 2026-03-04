@@ -126,8 +126,24 @@ The configuration file is located at `src/rs_motion_capture/config/config.yaml`.
 
 ## Running
 
-> ⚠️ Note
-> Before running, please ensure that the robosense_ac_driver node is started first to publish AC2 sensor data
+> ⚠️ **Important Notes**
+> 1. **Driver Dependency**: Before running, ensure that the `robosense_ac_driver` node is already active and publishing AC2 sensor data.
+> 2. **Environment Dependency (TensorRT)**: This node requires **TensorRT** for inference. You must ensure the TensorRT root directory and environment variables are properly configured before execution; otherwise, the program will fail to load the required dynamic libraries.
+> 3. **Communication Check**: Ensure that the current terminal and the driver node are using the same `ROS_DOMAIN_ID` and are on the same network.
+> 
+> 
+
+### 1. Configure Environment Variables
+
+Before launching the node, execute the following commands (replace `<Your TensorRT Root Directory>` with your actual installation path):
+
+```bash
+export TENSORRT_DIR=<Your TensorRT Root Directory>
+export PATH=$TENSORRT_DIR/bin:$PATH
+export LD_LIBRARY_PATH=$TENSORRT_DIR/lib:$LD_LIBRARY_PATH
+```
+
+### 2. Launch the Node
 
 ```bash
 source install/setup.bash

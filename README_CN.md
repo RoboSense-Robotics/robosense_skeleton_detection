@@ -126,8 +126,24 @@ colcon build --cmake-args -DTENSORRT_RELEASE_PATH=<Your TensorRT Root Directory>
 
 ## 运行
 
-> ⚠️ 注意，
-> 在运行之前，请确保先启动了 robosense_ac_driver 节点发布 AC2 传感器数据
+> ⚠️ **注意事项**
+> 1. **驱动依赖**：在运行之前，请确保先启动了 `robosense_ac_driver` 节点发布 AC2 传感器数据。
+> 2. **环境依赖 (TensorRT)**：本节点依赖 TensorRT 进行推理。运行前请确保已正确设置 TensorRT 根目录及环境变量，否则程序将无法加载必要的动态库。
+> 3. **通信检查**：请确保当前终端与驱动节点处于相同的 `ROS_DOMAIN_ID`。
+> 
+> 
+
+### 1. 配置环境变量
+
+在运行节点前，请执行以下命令（建议根据您的实际路径修改 `<Your TensorRT Root Directory>`）：
+
+```bash
+export TENSORRT_DIR=<Your TensorRT Root Directory>
+export PATH=$TENSORRT_DIR/bin:$PATH
+export LD_LIBRARY_PATH=$TENSORRT_DIR/lib:$LD_LIBRARY_PATH
+```
+
+### 2. 启动节点
 
 ```bash
 source install/setup.bash
