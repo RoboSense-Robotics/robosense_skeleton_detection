@@ -183,6 +183,8 @@ When running this project via ros2 launch, RViz2 will automatically start for vi
 - Point cloud data
 - Camera images
 
+![](images/27.jpg)
+
 ## Troubleshooting
 
 ### 1. TensorRT Not Found During Compilation

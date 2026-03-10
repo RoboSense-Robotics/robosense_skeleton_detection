@@ -183,6 +183,8 @@ ros2 launch rs_motion_capture motion_capture_node_launch.py collector:=zed calib
 - 点云数据
 - 相机图像
 
+![](images/27.jpg)
+
 ## 常见问题
 
 ### 1. 编译时找不到 TensorRT
