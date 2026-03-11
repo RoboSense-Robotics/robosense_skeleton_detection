@@ -46,12 +46,6 @@ int main(int argc, char **argv) {
   cfg_node["glove_type"] = glove_type;
   cfg_node["ws_center_z"] = ws_center_z;
 
-  // set log level and log dir
-  /*setLogger(cfg_node["log"]["log_to_dir"].as<std::string>(),*/
-  /*          cfg_node["log"]["level"].as<std::string>(),*/
-  /*          "async");*/
-  
-
   spdlog::info("Use config path: {}", config_file);
   spdlog::info("Collector: {}", collector);
   spdlog::info("Check mode: {}", check_mode);
