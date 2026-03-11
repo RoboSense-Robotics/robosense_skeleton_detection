@@ -6,12 +6,12 @@
 #include <cuda_runtime.h>
 #include <filesystem>
 #include <opencv2/imgcodecs.hpp>
-#include "motion_capture/common/macros.h"
+
 
 namespace fs = std::filesystem;
 
-namespace robosense {
-namespace motion_capture {
+
+namespace robosense::motion_capture {
 
 void RvizDisplay::init() {
   const auto& rviz_node = rally::ConfigureManager::getInstance().getCfgNode()["ros"]["rviz"];
@@ -19,45 +19,24 @@ void RvizDisplay::init() {
   // vis pose_3d coord
   change_coord_ = rviz_node["change_coord"].as<bool>();
   const auto& global_cfg_node = rally::ConfigureManager::getInstance().getCfgNode();
-  float ws_center_z = global_cfg_node["ws_center_z"].as<float>();
-  float world_center_x = global_cfg_node["world_center_x"].as<float>();
-  float world_center_y = global_cfg_node["world_center_y"].as<float>();
-  float world_center_z = global_cfg_node["world_center_z"].as<float>();
+  auto ws_center_z = global_cfg_node["ws_center_z"].as<float>();
+  auto world_center_x = global_cfg_node["world_center_x"].as<float>();
+  auto world_center_y = global_cfg_node["world_center_y"].as<float>();
+  auto world_center_z = global_cfg_node["world_center_z"].as<float>();
   world_x_bias_ = world_center_x;
   world_y_bias_ = world_center_y;
   world_z_bias_ = world_center_z - ws_center_z;
 
   controller_.left_vis_enable = rviz_node["left_ac_vis"]["enable"].as<bool>();
-  controller_.left_od_enable = rviz_node["left_ac_vis"]["left_ac_od"]["enable"].as<bool>();
   controller_.left_pd_enable = rviz_node["left_ac_vis"]["left_ac_pd"]["enable"].as<bool>();
-  controller_.left_lidar_enable = rviz_node["left_ac_vis"]["left_ac_lidar"]["enable"].as<bool>();
-  controller_.left_3d_marker_enable = rviz_node["left_ac_vis"]["left_ac_3d"]["enable"].as<bool>();
   controller_.right_vis_enable = rviz_node["right_ac_vis"]["enable"].as<bool>();
-  controller_.right_od_enable = rviz_node["right_ac_vis"]["right_ac_od"]["enable"].as<bool>();
   controller_.right_pd_enable = rviz_node["right_ac_vis"]["right_ac_pd"]["enable"].as<bool>();
-  controller_.right_lidar_enable = rviz_node["right_ac_vis"]["right_ac_lidar"]["enable"].as<bool>();
-  controller_.right_3d_marker_enable = rviz_node["right_ac_vis"]["right_ac_3d"]["enable"].as<bool>();
   controller_.fusion_vis_enable = rviz_node["fusion_vis"]["enable"].as<bool>();
   controller_.fusion_3d_marker_enable = rviz_node["fusion_vis"]["fusion_3d"]["enable"].as<bool>();
 
-  left_od_pub_ = node_ptr_->create_publisher<sensor_msgs::msg::Image>(
-          rviz_node["left_ac_vis"]["left_ac_od"]["topic"].as<std::string>(), 10);
-  right_od_pub_ = node_ptr_->create_publisher<sensor_msgs::msg::Image>(
-          rviz_node["right_ac_vis"]["right_ac_od"]["topic"].as<std::string>(), 10);
-  left_pd_pub_ = node_ptr_->create_publisher<sensor_msgs::msg::Image>(
-          rviz_node["left_ac_vis"]["left_ac_pd"]["topic"].as<std::string>(), 10);
-  right_pd_pub_ = node_ptr_->create_publisher<sensor_msgs::msg::Image>(
-          rviz_node["right_ac_vis"]["right_ac_pd"]["topic"].as<std::string>(), 10);
-  left_3d_marker_pub_ = node_ptr_->create_publisher<visualization_msgs::msg::MarkerArray>(
-          rviz_node["left_ac_vis"]["left_ac_3d"]["topic"].as<std::string>(), 10);
-  right_3d_marker_pub_ = node_ptr_->create_publisher<visualization_msgs::msg::MarkerArray>(
-          rviz_node["right_ac_vis"]["right_ac_3d"]["topic"].as<std::string>(), 10);
-  fusion_3d_marker_pub_ = node_ptr_->create_publisher<visualization_msgs::msg::MarkerArray>(
-          rviz_node["fusion_vis"]["fusion_3d"]["topic"].as<std::string>(), 10);
-  left_lidar_pub_ = node_ptr_->create_publisher<sensor_msgs::msg::PointCloud2>(
-          rviz_node["left_ac_vis"]["left_ac_lidar"]["topic"].as<std::string>(), 10);
-  right_lidar_pub_ = node_ptr_->create_publisher<sensor_msgs::msg::PointCloud2>(
-          rviz_node["right_ac_vis"]["right_ac_lidar"]["topic"].as<std::string>(), 10);
+  left_pd_pub_ = node_ptr_->create_publisher<sensor_msgs::msg::Image>(rviz_node["left_ac_vis"]["left_ac_pd"]["topic"].as<std::string>(), 10);
+  right_pd_pub_ = node_ptr_->create_publisher<sensor_msgs::msg::Image>(rviz_node["right_ac_vis"]["right_ac_pd"]["topic"].as<std::string>(), 10);
+  fusion_3d_marker_pub_ = node_ptr_->create_publisher<visualization_msgs::msg::MarkerArray>(rviz_node["fusion_vis"]["fusion_3d"]["topic"].as<std::string>(), 10);
 
   ac_name_color_map_[rally::CameraEnum::left_ac_camera] = createColor(0.f, 1.f, 0.f, 1.f);
   ac_name_color_map_[rally::CameraEnum::right_ac_camera] = createColor(0.f, 0.f, 1.f, 1.f);
@@ -81,79 +60,23 @@ void RvizDisplay::init() {
   }
 
   worker_->bind([this](const Msg::Ptr &msg_ptr) {
-      this->display(msg_ptr);
-      for (auto &cb : this->display_cb_list_) {
-        cb(msg_ptr);
-      }
+      display(msg_ptr);
   });
 }
 
-void RvizDisplay::display(const Msg::Ptr &msg_ptr) {
-  if (controller_.left_vis_enable) {
-    if (controller_.left_od_enable) {
-      displayODResult(msg_ptr, rally::CameraEnum::left_ac_camera);
-    }
-    if (controller_.left_pd_enable) {
-      displayPDResult(msg_ptr, rally::CameraEnum::left_ac_camera);
-    }
-    if (controller_.left_lidar_enable) {
-      displayLidar(msg_ptr, rally::CameraEnum::left_ac_camera);
-    }
-    if (controller_.left_3d_marker_enable) {
-      display3DMarker(msg_ptr, rally::CameraEnum::left_ac_camera);
-    }
+void RvizDisplay::display(const Msg::Ptr& msg_ptr)
+{
+  if (controller_.left_vis_enable && controller_.left_pd_enable)
+  {
+    displayPDResult(msg_ptr, rally::CameraEnum::left_ac_camera);
   }
-  if (controller_.right_vis_enable) {
-    if (controller_.right_od_enable) {
-      displayODResult(msg_ptr, rally::CameraEnum::right_ac_camera);
-    }
-    if (controller_.right_pd_enable) {
-      displayPDResult(msg_ptr, rally::CameraEnum::right_ac_camera);
-    }
-    if (controller_.right_lidar_enable) {
-      displayLidar(msg_ptr, rally::CameraEnum::right_ac_camera);
-    }
-    if (controller_.right_3d_marker_enable) {
-      display3DMarker(msg_ptr, rally::CameraEnum::right_ac_camera);
-    }
+  if (controller_.right_vis_enable && controller_.right_pd_enable)
+  {
+    displayPDResult(msg_ptr, rally::CameraEnum::right_ac_camera);
   }
-  if (controller_.fusion_vis_enable) {
-    if (controller_.fusion_3d_marker_enable) {
-      display3DMarker(msg_ptr, rally::CameraEnum::fusion);
-    }
-  }
-}
-
-void RvizDisplay::displayODResult(const Msg::Ptr &msg_ptr, rally::CameraEnum camera_enum) {
-  const auto& inter_res_ptr = msg_ptr->internal_result_ptr;
-  uint32_t image_width = SensorManager::getInstance().getWidth(rally::CameraEnum::left_ac_camera);
-  uint32_t image_height = SensorManager::getInstance().getHeight(rally::CameraEnum::left_ac_camera);
-  cv::Mat image;
-  cv::Mat ori_image = camera_enum == rally::CameraEnum::left_ac_camera ? inter_res_ptr->left_undistort_image : inter_res_ptr->right_undistort_image;
-  cv::cvtColor(ori_image,
-               image, cv::COLOR_RGB2BGR);
-
-  // draw 2d bbox
-  if (inter_res_ptr->is_person_detected_map[camera_enum] == 1) {
-    // 画rect
-    cv::rectangle(image,
-                  cv::Point(static_cast<int>(inter_res_ptr->detected_person_bbox_map[camera_enum].xmin),
-                            static_cast<int>(inter_res_ptr->detected_person_bbox_map[camera_enum].ymin)),
-                  cv::Point(static_cast<int>(inter_res_ptr->detected_person_bbox_map[camera_enum].xmax),
-                            static_cast<int>(inter_res_ptr->detected_person_bbox_map[camera_enum].ymax)),
-                  cv::Scalar(0, 255, 0), 5);
-  }
-  std_msgs::msg::Header header;
-  header.stamp = rclcpp::Time(msg_ptr->timestamp);
-  header.frame_id = frame_id_;
-  sensor_msgs::msg::Image::SharedPtr image_msg =
-          cv_bridge::CvImage(header, "bgr8", image).toImageMsg();
-  if (camera_enum == rally::CameraEnum::left_ac_camera) {
-    left_od_pub_->publish(*image_msg);
-  } else if (camera_enum == rally::CameraEnum::right_ac_camera) {
-    right_od_pub_->publish(*image_msg);
-  } else {
-    RWARN << "Invalid camera enum for display OD result.";
+  if (controller_.fusion_vis_enable && controller_.fusion_3d_marker_enable)
+  {
+    display3DMarker(msg_ptr, rally::CameraEnum::fusion);
   }
 }
 
@@ -165,13 +88,9 @@ void RvizDisplay::displayPDResult(const Msg::Ptr &msg_ptr, rally::CameraEnum cam
     return;
   }
 
-  uint32_t image_width = SensorManager::getInstance().getWidth(rally::CameraEnum::left_ac_camera);
-  uint32_t image_height = SensorManager::getInstance().getHeight(rally::CameraEnum::left_ac_camera);
   cv::Mat image;
-
   cv::Mat ori_image = camera_enum == rally::CameraEnum::left_ac_camera ? inter_res_ptr->left_undistort_image : inter_res_ptr->right_undistort_image;
-  cv::cvtColor(ori_image,
-               image, cv::COLOR_RGB2BGR);
+  cv::cvtColor(ori_image, image, cv::COLOR_RGB2BGR);
 
 
   // 0. 绘制二维码
@@ -186,8 +105,8 @@ void RvizDisplay::displayPDResult(const Msg::Ptr &msg_ptr, rally::CameraEnum cam
   // 1. 网络2d点连线
   const auto& points = inter_res_ptr->image_all_pose_points_map[camera_enum];
   for (const auto& joint_link : halpe_26_joint_links) {
-    size_t idx1 = static_cast<size_t>(joint_link.first);
-    size_t idx2 = static_cast<size_t>(joint_link.second);
+    auto idx1 = static_cast<size_t>(joint_link.first);
+    auto idx2 = static_cast<size_t>(joint_link.second);
 
     // 确保索引在有效范围内且点是有效的
     if (idx1 < points.size() && idx2 < points.size() &&
@@ -202,82 +121,20 @@ void RvizDisplay::displayPDResult(const Msg::Ptr &msg_ptr, rally::CameraEnum cam
     }
   }
   // draw points and scores
-  for (size_t i = 0; i < points.size(); i++) {
-    if (points[i].valid) {
+  for (auto point : points)
+  {
+    if (point.valid)
+    {
       // 画关键点
       cv::circle(
               image,
-              cv::Point(int(points[i].x ), int(points[i].y )),
+              cv::Point(int(point.x), int(point.y)),
               1,
               cv::Scalar(0, 0, 255),
               1,
               cv::LINE_AA);
     }
   }
-
-  // 2. 激光点投影到图像上的坐标和深度可视化
-  // cv::Mat depth_image = cv::Mat::zeros(image.size(), CV_8UC3);
-  // cv::Scalar min_depth_color(255, 0, 0); // 蓝色 - 近
-  // cv::Scalar max_depth_color(0, 0, 255); // 红色 - 远
-  // float min_depth = std::numeric_limits<float>::max();
-  // float max_depth = 0.0f;
-  // for (size_t i = 0; i < pc_z->size(); i++) {
-  //   if (pc_z->at(i) > 0 && pc_z->at(i) < min_depth) {
-  //     min_depth = pc_z->at(i);
-  //   }
-  //   if (pc_z->at(i) > max_depth) {
-  //     max_depth = pc_z->at(i);
-  //   }
-  // }
-  // // 增强深度对比度
-  // float depth_range = max_depth - min_depth;
-  // float contrast_min = min_depth;
-  // float contrast_max = max_depth;
-
-  // // 如果深度范围过大，可以调整对比度范围
-  // /*if (depth_range > 5.0f) {*/
-  // /*  contrast_min = min_depth + depth_range * 0.1f;*/
-  // /*  contrast_max = max_depth - depth_range * 0.1f;*/
-  // /*}*/
-  // // min max fixed
-  // contrast_min = 0.5;
-  // contrast_max = 4.5;
-
-  // 绘制深度图
-  // for (size_t i = 0; i < pc_ptr->size(); i++) {
-  //   int x = pc_ptr->at(i).x;
-  //   int y = pc_ptr->at(i).y;
-  //   if (x >= 0 && x < depth_image.cols && y >= 0 && y < depth_image.rows) {
-  //     // 归一化深度值，增强对比度
-  //     float normalized_depth = (pc_z->at(i) - contrast_min) / (contrast_max - contrast_min);
-  //     normalized_depth = std::max(0.0f, std::min(1.0f, normalized_depth));
-  //     // 使用更鲜明的颜色映射
-  //     cv::Scalar color;
-  //     if (normalized_depth < 0.25f) {
-  //       // 蓝色到青色
-  //       float t = normalized_depth * 4.0f;
-  //       color = cv::Scalar(255, 255 * t, 0);
-  //     } else if (normalized_depth < 0.5f) {
-  //       // 青色到绿色
-  //       float t = (normalized_depth - 0.25f) * 4.0f;
-  //       color = cv::Scalar(255 * (1.0f - t), 255, 0);
-  //     } else if (normalized_depth < 0.75f) {
-  //       // 绿色到黄色
-  //       float t = (normalized_depth - 0.5f) * 4.0f;
-  //       color = cv::Scalar(0, 255, 255 * t);
-  //     } else {
-  //       // 黄色到红色
-  //       float t = (normalized_depth - 0.75f) * 4.0f;
-  //       color = cv::Scalar(0, 255 * (1.0f - t), 255);
-  //     }
-  //     // 绘制更大的点
-  //     cv::circle(depth_image, cv::Point(x, y), 2, color, -1);
-  //   }
-  // }
-
-  // // 将深度图混合到原始图像
-  // cv::Mat depth_overlay;
-  // cv::addWeighted(image, 0.6, depth_image, 0.4, 0, depth_overlay);
 
   cv::Mat depth_overlay = image;
 
@@ -290,7 +147,7 @@ void RvizDisplay::displayPDResult(const Msg::Ptr &msg_ptr, rally::CameraEnum cam
     }
     cv::circle(depth_overlay, cv::Point(static_cast<int>(arm_keypoints[i].x),
                                         static_cast<int>(arm_keypoints[i].y)) , 5, cv::Scalar(255, 0, 255), -1);
-   // std::string label = std::to_string(idx)+ " : "+ cv::format("%.2f",arm_keypoints[i].score);
+
     std::string label = std::to_string(idx);
     cv::putText(depth_overlay, label,
                 cv::Point(static_cast<int>(arm_keypoints[i].x) + 5, static_cast<int>(arm_keypoints[i].y) - 5),
@@ -319,19 +176,13 @@ void RvizDisplay::displayPDResult(const Msg::Ptr &msg_ptr, rally::CameraEnum cam
               cv::Point(20, 90),
               cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 0, 255), 2);
 
-  // 显示深度范围
-  // std::string depth_range_str = cv::format("Depth Range: %.2f - %.2f m", min_depth, max_depth);
-  // cv::putText(depth_overlay, depth_range_str,
-  //             cv::Point(20, 120),
-  //             cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 255, 255), 2);
-
   // 显示时间戳
   cv::putText(depth_overlay, "TimeStamp: " + std::to_string(msg_ptr->timestamp),
               cv::Point(20, 150),
               cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 0, 255), 2);
 
   std_msgs::msg::Header header;
-  header.stamp = rclcpp::Time(msg_ptr->timestamp);
+  header.stamp = rclcpp::Time(static_cast<int64_t>(msg_ptr->timestamp));
   header.frame_id = frame_id_;
   sensor_msgs::msg::Image::SharedPtr image_msg =
           cv_bridge::CvImage(header, "bgr8", depth_overlay).toImageMsg();
@@ -346,7 +197,7 @@ void RvizDisplay::displayPDResult(const Msg::Ptr &msg_ptr, rally::CameraEnum cam
       cv::imwrite(right_pd_dir_+"/"+std::to_string(msg_ptr->timestamp)+".jpg", depth_overlay);
     }
   } else {
-    RWARN << "Invalid camera enum for display PD result.";
+    spdlog::warn("Invalid camera enum for display PD result.");
   }
 }
 
@@ -367,7 +218,7 @@ void RvizDisplay::display3DMarker(const Msg::Ptr &msg_ptr, rally::CameraEnum cam
   // 创建点标记
   visualization_msgs::msg::Marker points_marker;
   points_marker.header.frame_id = frame_id_;
-  points_marker.header.stamp = rclcpp::Time(msg_ptr->timestamp);
+  points_marker.header.stamp = rclcpp::Time(static_cast<int64_t>(msg_ptr->timestamp));
   points_marker.ns = "pose_points";
   points_marker.action = visualization_msgs::msg::Marker::ADD;
   points_marker.pose.orientation.w = 1.0;
@@ -381,7 +232,7 @@ void RvizDisplay::display3DMarker(const Msg::Ptr &msg_ptr, rally::CameraEnum cam
   // 创建线标记 - 在关键点0-1, 1-2, 2-3之间构建连线
   visualization_msgs::msg::Marker lines_marker;
   lines_marker.header.frame_id = frame_id_;
-  lines_marker.header.stamp = rclcpp::Time(msg_ptr->timestamp);
+  lines_marker.header.stamp = rclcpp::Time(static_cast<int64_t>(msg_ptr->timestamp));
   lines_marker.ns = "pose_lines";
   lines_marker.action = visualization_msgs::msg::Marker::ADD;
   lines_marker.pose.orientation.w = 1.0;
@@ -417,7 +268,7 @@ void RvizDisplay::display3DMarker(const Msg::Ptr &msg_ptr, rally::CameraEnum cam
     // 创建文本标记
     visualization_msgs::msg::Marker text_marker;
     text_marker.header.frame_id = frame_id_;
-    text_marker.header.stamp = rclcpp::Time(msg_ptr->timestamp);
+    text_marker.header.stamp = rclcpp::Time(static_cast<int64_t>(msg_ptr->timestamp));
     text_marker.ns = "pose_text";
     text_marker.action = visualization_msgs::msg::Marker::ADD;
     text_marker.id = static_cast<int>(i + 10); // ID从10开始避免冲突
@@ -461,7 +312,7 @@ void RvizDisplay::display3DMarker(const Msg::Ptr &msg_ptr, rally::CameraEnum cam
   // ================================================= 添加原点坐标系
   visualization_msgs::msg::Marker origin_marker;
   origin_marker.header.frame_id = frame_id_;
-  origin_marker.header.stamp = rclcpp::Time(msg_ptr->timestamp);
+  origin_marker.header.stamp = rclcpp::Time(static_cast<int64_t>(msg_ptr->timestamp));
   origin_marker.ns = "origin_axes";
   origin_marker.action = visualization_msgs::msg::Marker::ADD;
   origin_marker.id = 2;
@@ -511,7 +362,7 @@ void RvizDisplay::display3DMarker(const Msg::Ptr &msg_ptr, rally::CameraEnum cam
   // 创建右手坐标系标记
   visualization_msgs::msg::Marker right_axes_marker;
   right_axes_marker.header.frame_id = frame_id_;
-  right_axes_marker.header.stamp = rclcpp::Time(msg_ptr->timestamp);
+  right_axes_marker.header.stamp = rclcpp::Time(static_cast<int64_t>(msg_ptr->timestamp));
   right_axes_marker.ns = "right_hand_axes";
   right_axes_marker.action = visualization_msgs::msg::Marker::ADD;
   right_axes_marker.id = 3;
@@ -575,7 +426,7 @@ void RvizDisplay::display3DMarker(const Msg::Ptr &msg_ptr, rally::CameraEnum cam
   // 创建左手坐标系标记
   visualization_msgs::msg::Marker left_axes_marker;
   left_axes_marker.header.frame_id = frame_id_;
-  left_axes_marker.header.stamp = rclcpp::Time(msg_ptr->timestamp);
+  left_axes_marker.header.stamp = rclcpp::Time(static_cast<int64_t>(msg_ptr->timestamp));
   left_axes_marker.ns = "left_hand_axes";
   left_axes_marker.action = visualization_msgs::msg::Marker::ADD;
   left_axes_marker.id = 4;
@@ -638,61 +489,7 @@ void RvizDisplay::display3DMarker(const Msg::Ptr &msg_ptr, rally::CameraEnum cam
   }
 
   // 发布标记数组
-  if (camera_enum == rally::CameraEnum::fusion) {
+  if (camera_enum == rally::CameraEnum::fusion)
     fusion_3d_marker_pub_->publish(marker_array);
-  } else if (camera_enum == rally::CameraEnum::right_ac_camera) {
-    right_3d_marker_pub_->publish(marker_array);
-  } else if (camera_enum == rally::CameraEnum::left_ac_camera) {
-    left_3d_marker_pub_->publish(marker_array);
-  } else {
-    RWARN << "Invalid camera enum for display 3D marker result.";
-  }
-}
-
-void RvizDisplay::displayLidar(const Msg::Ptr &msg_ptr, rally::CameraEnum lidar_enum) {
-  const auto& inter_res_ptr = msg_ptr->internal_result_ptr;
-
-  const auto& pc_z = inter_res_ptr->image_projected_pc_depth_map[lidar_enum];
-  const auto& pc_ptr = inter_res_ptr->image_projected_pc_map[lidar_enum];
-
-  pcl::PointCloud<pcl::PointXYZ> cloud;
-  cloud.width  = pc_z->size();
-  cloud.height = 1;
-  cloud.is_dense = false;
-  cloud.points.resize(cloud.width * cloud.height);
-  RINFO<<   "pc size: "<<pc_ptr->size()<<", pc_z size: "<<pc_z->size();
-  for (size_t i = 0; i < cloud.points.size(); ++i) {
-      cloud.points[i].x = pc_ptr->at(i).x;
-      cloud.points[i].y = pc_ptr->at(i).y;
-      cloud.points[i].z = pc_z->at(i);
-  }
-  sensor_msgs::msg::PointCloud2 cloud_msg;
-  pcl::toROSMsg(cloud, cloud_msg);
-  cloud_msg.header.frame_id = frame_id_;
-  cloud_msg.header.stamp = rclcpp::Time(msg_ptr->timestamp);
-  if (lidar_enum == rally::CameraEnum::left_ac_camera) {
-    left_lidar_pub_->publish(cloud_msg);
-  } else if (lidar_enum == rally::CameraEnum::right_ac_camera) {
-    right_lidar_pub_->publish(cloud_msg);
-  } else {
-    RWARN << "Invalid lidar enum for display lidar data.";
-  }
-  // const auto& pcl_lidar_ptr = msg_ptr->input_msg_ptr->lidar_map[lidar_enum]->data;
-  // // project to world coordinate
-  // Eigen::Matrix4f lidar2world_transform = SensorManager::getInstance().getLidar2World(lidar_enum);
-  // pcl::transformPointCloud(*pcl_lidar_ptr, *pcl_lidar_ptr, lidar2world_transform);
-  // sensor_msgs::msg::PointCloud2 cloud_msg;
-  // pcl::toROSMsg(*pcl_lidar_ptr, cloud_msg);
-  // cloud_msg.header.frame_id = frame_id_;
-  // cloud_msg.header.stamp = rclcpp::Time(msg_ptr->timestamp);
-  // if (lidar_enum == rally::LidarEnum::left_ac_lidar) {
-  //   left_lidar_pub_->publish(cloud_msg);
-  // } else if (lidar_enum == rally::LidarEnum::right_ac_lidar) {
-  //   right_lidar_pub_->publish(cloud_msg);
-  // } else {
-  //   RWARN << "Invalid lidar enum for display lidar data.";
-  // }
-}
-
 }
 }

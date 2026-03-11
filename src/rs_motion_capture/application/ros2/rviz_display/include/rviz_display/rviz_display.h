@@ -23,7 +23,8 @@ class RvizDisplay {
 public:
   using Ptr = std::shared_ptr<RvizDisplay>;
 
-  RvizDisplay(const rclcpp::Node::SharedPtr& node_ptr) : node_ptr_(node_ptr) {
+  RvizDisplay(const rclcpp::Node::SharedPtr& node_ptr) : node_ptr_(node_ptr)
+  {
     worker_.reset(new rally::ConsumerWorker<Msg::Ptr>("rviz_display"));
   }
 
@@ -33,70 +34,38 @@ public:
 
   void display(const Msg::Ptr &msg);
 
-  void start() {
-    worker_->start();
-  }
+  void start() { worker_->start(); }
 
-  void stop() {
-    worker_->stop();
-  }
+  void stop() { worker_->stop(); }
 
-  void addData(const Msg::Ptr &msg_ptr) {
-    worker_->add(msg_ptr);
-  }
-
-  void regDisplayCallback(const std::function<void(const Msg::Ptr &msg_ptr)> &cb) {
-    std::lock_guard<std::mutex> lg(mx_display_cb_);
-    display_cb_list_.emplace_back(cb);
-  }
+  void addData(const Msg::Ptr &msg_ptr) { worker_->add(msg_ptr); }
 
 private:
-  void displayODResult(const Msg::Ptr &msg_ptr, rally::CameraEnum camera_enum);
-
-  void displayPDResult(const Msg::Ptr &msg_ptr, rally::CameraEnum camera_enum);
-
-  void displayLidar(const Msg::Ptr &msg_ptr, rally::CameraEnum lidar_enum);
-
-  void display3DMarker(const Msg::Ptr &msg_ptr, rally::CameraEnum camera_enum);
-
+  void displayPDResult(const Msg::Ptr& msg_ptr, rally::CameraEnum camera_enum);
+  void display3DMarker(const Msg::Ptr& msg_ptr, rally::CameraEnum camera_enum);
 
 private:
-  rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr left_od_pub_;
-  rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr right_od_pub_;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr left_pd_pub_;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr right_pd_pub_;
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr left_3d_marker_pub_;
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr right_3d_marker_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr fusion_3d_marker_pub_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr left_lidar_pub_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr right_lidar_pub_;
-
 
 private:
   rclcpp::Node::SharedPtr node_ptr_;
   rally::ConsumerWorker<Msg::Ptr>::Ptr worker_;
-  std::mutex mx_display_cb_;
-  std::vector<std::function<void(const Msg::Ptr &msg_ptr)> > display_cb_list_;
 
   struct Controller {
     bool left_vis_enable = false;
-    bool left_od_enable = false;
     bool left_pd_enable = false;
-    bool left_lidar_enable = false;
-    bool left_3d_marker_enable = false;
     bool right_vis_enable = false;
-    bool right_od_enable = false;
     bool right_pd_enable = false;
-    bool right_lidar_enable = false;
-    bool right_3d_marker_enable = false;
     bool fusion_vis_enable = false;
     bool fusion_3d_marker_enable = false;
   } controller_;
 
-  // std::string frame_id_ = "base_link";
   std::string frame_id_ = "map";
 
   std::vector<uint8_t> ori_img_data_;
+
 private:
   std::vector<std::pair<int, int>> coco_133_joint_links_ = {
           // 身体主干连接
@@ -146,7 +115,7 @@ private:
   
   std::vector<int> display_points_idx_ = {0,1,2,3,4,5,6,9,10,11,12,13,14};
 
-  std_msgs::msg::ColorRGBA createColor(float r, float g, float b, float a = 1.0f) {
+  static std_msgs::msg::ColorRGBA createColor(float r, float g, float b, float a = 1.0f) {
     std_msgs::msg::ColorRGBA color;
     color.r = r;
     color.g = g;
