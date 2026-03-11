@@ -35,9 +35,6 @@ colcon build
 source install/setup.bash
 ```
 
-> ⚠️ 注意
-> robosense_ac_driver 内部有 robosense_msgs 包，编译后会生成相关的消息类型，并且本项目也需要 robosense_msgs 中的消息类型，因此在编译本项目之前，请确保 source 了 robosense_ac_driver 的安装环境。
-
 ## 安装步骤
 
 ### 1. 克隆代码
@@ -117,10 +114,7 @@ trtexec --onnx=src/rs_motion_capture/model/onnx/dynamic_end2end2_key26.onnx --sa
 - 建议使用 `--fp16` 选项以获得更好的性能
 - 如果转换失败,请检查 TensorRT 版本与 ONNX 模型的兼容性
 
-### 3. 编译项目
-
-> ⚠️ 注意，
-> 在编译本项目之前，请确保 source 了 robosense_ac_driver 的安装环境
+### 3. 编译
 
 ```bash
 colcon build --cmake-args -DTENSORRT_RELEASE_PATH=<Your TensorRT Root Directory>
@@ -142,8 +136,6 @@ colcon build --cmake-args -DTENSORRT_RELEASE_PATH=<Your TensorRT Root Directory>
 > 1. **驱动依赖**：在运行之前，请确保先启动了 `robosense_ac_driver` 节点发布 AC2 传感器数据。
 > 2. **环境依赖 (TensorRT)**：本节点依赖 TensorRT 进行推理。运行前请确保已正确设置 TensorRT 根目录及环境变量，否则程序将无法加载必要的动态库。
 > 3. **通信检查**：请确保当前终端与驱动节点处于相同的 `ROS_DOMAIN_ID`。
-> 
-> 
 
 ### 1. 配置环境变量
 
@@ -172,8 +164,9 @@ ros2 launch rs_motion_capture motion_capture_node_launch.py collector:=zed calib
 
 ### 发布话题
 
-- `/pose_detection/pose_3d` - 3D 骨架姿态
-- `/pose_detection/pose_2d` - 2D 骨架姿态
+- `/pose_detection/pose_markers` - 3D 骨架姿态
+- `/left/pd` - 2D 骨架姿态（左相机图像）
+- `/right/pd` - 2D 骨架姿态（右相机图像）
 
 ## 可视化
 

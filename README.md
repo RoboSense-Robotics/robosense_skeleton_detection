@@ -35,9 +35,6 @@ colcon build
 source install/setup.bash
 ```
 
-> ⚠️ Note
-> The robosense_ac_driver includes the robosense_msgs package, which generates related message types after compilation. This project also requires message types from robosense_msgs. Therefore, before compiling this project, please ensure you have sourced the installation environment of robosense_ac_driver.
-
 ## Installation
 
 ### 1. Clone the Repository
@@ -117,10 +114,7 @@ trtexec --onnx=src/rs_motion_capture/model/onnx/dynamic_end2end2_key26.onnx --sa
 - It's recommended to use the `--fp16` option for better performance
 - If conversion fails, please check the compatibility between TensorRT version and ONNX models
 
-### 3. Build the Project
-
-> ⚠️ Note
-> Before building this project, please ensure you have sourced the installation environment of robosense_ac_driver
+### 3. Build
 
 ```bash
 colcon build --cmake-args -DTENSORRT_RELEASE_PATH=<Your TensorRT Root Directory>
@@ -142,8 +136,6 @@ The configuration file is located at `src/rs_motion_capture/config/config.yaml`.
 > 1. **Driver Dependency**: Before running, ensure that the `robosense_ac_driver` node is already active and publishing AC2 sensor data.
 > 2. **Environment Dependency (TensorRT)**: This node requires **TensorRT** for inference. You must ensure the TensorRT root directory and environment variables are properly configured before execution; otherwise, the program will fail to load the required dynamic libraries.
 > 3. **Communication Check**: Ensure that the current terminal and the driver node are using the same `ROS_DOMAIN_ID` and are on the same network.
-> 
-> 
 
 ### 1. Configure Environment Variables
 
@@ -172,8 +164,9 @@ ros2 launch rs_motion_capture motion_capture_node_launch.py collector:=zed calib
 
 ### Published Topics
 
-- `/pose_detection/pose_3d` - 3D skeleton pose
-- `/pose_detection/pose_2d` - 2D skeleton pose
+- `/pose_detection/pose_markers` - 3D skeleton pose
+- `/left/pd` - 2D skeleton pose (left camera image)
+- `/right/pd` - 2D skeleton pose (right camera image)
 
 ## Visualization
 
