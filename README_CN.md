@@ -2,7 +2,7 @@
 
 [English Version](README.md)
 
-一个用于人体骨架检测的 ROS2 项目，基于 ROBOSENSE AC2 传感器的点云和图像进行处理，使用 TensorRT 进行加速。该项目包含一个 ROS2 节点，可以实时地从 AC2 数据中提取人体骨架信息，并发布相关的 ROS2 消息。
+一个用于人体骨架检测的 ROS/ROS2 项目，基于 ROBOSENSE AC2 传感器的点云和图像进行处理，使用 TensorRT 进行加速。该项目同时支持 **ROS1** 和 **ROS2**，可以实时地从 AC2 数据中提取人体骨架信息，并发布相关的 ROS/ROS2 消息。
 
 ## 系统要求
 
@@ -116,8 +116,14 @@ trtexec --onnx=src/rs_motion_capture/model/onnx/dynamic_end2end2_key26.onnx --sa
 
 ### 3. 编译
 
+**ROS2 (colcon):**
 ```bash
 colcon build --cmake-args -DTENSORRT_RELEASE_PATH=<Your TensorRT Root Directory>
+```
+
+**ROS1 (catkin):**
+```bash
+catkin_make -DTENSORRT_RELEASE_PATH=<Your TensorRT Root Directory>
 ```
 
 **说明**
@@ -149,12 +155,19 @@ export LD_LIBRARY_PATH=$TENSORRT_DIR/lib:$LD_LIBRARY_PATH
 
 ### 2. 启动节点
 
+**ROS2:**
 ```bash
 source install/setup.bash
 ros2 launch rs_motion_capture motion_capture_node_launch.py collector:=zed calib_mode:=false
 ```
 
-## ROS2 话题
+**ROS1:**
+```bash
+source devel/setup.bash
+roslaunch rs_motion_capture motion_capture_node_ros1.launch collector:=zed calib_mode:=false
+```
+
+## ROS 话题
 
 ### 订阅话题
 

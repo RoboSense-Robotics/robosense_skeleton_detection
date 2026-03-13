@@ -2,7 +2,7 @@
 
 [ 中文版本 ](README_CN.md)
 
-A ROS2 project for human skeleton detection based on point cloud and image data from ROBOSENSE AC2 sensor, accelerated with TensorRT. This project contains a ROS2 node that can extract human skeleton information from AC2 data in real-time and publish relevant ROS2 messages.
+A ROS/ROS2 project for human skeleton detection based on point cloud and image data from ROBOSENSE AC2 sensor, accelerated with TensorRT. This project supports **ROS1** and **ROS2**, and can extract human skeleton information from AC2 data in real-time and publish relevant ROS/ROS2 messages.
 
 ## System Requirements
 
@@ -116,8 +116,14 @@ trtexec --onnx=src/rs_motion_capture/model/onnx/dynamic_end2end2_key26.onnx --sa
 
 ### 3. Build
 
+**ROS2 (colcon):**
 ```bash
 colcon build --cmake-args -DTENSORRT_RELEASE_PATH=<Your TensorRT Root Directory>
+```
+
+**ROS1 (catkin):**
+```bash
+catkin_make -DTENSORRT_RELEASE_PATH=<Your TensorRT Root Directory>
 ```
 
 **Note**
@@ -149,12 +155,20 @@ export LD_LIBRARY_PATH=$TENSORRT_DIR/lib:$LD_LIBRARY_PATH
 
 ### 2. Launch the Node
 
+**ROS2:**
 ```bash
 source install/setup.bash
 ros2 launch rs_motion_capture motion_capture_node_launch.py collector:=zed calib_mode:=false
 ```
 
-## ROS2 Topics
+**ROS1:**
+```bash
+source devel/setup.bash
+roslaunch rs_motion_capture motion_capture_node_ros1.launch collector:=zed calib_mode:=false
+```
+> 注意：ROS1 下 robosense_ac_driver 主要为 ROS2 设计，可通过 ros1_bridge、rosbag 回放或自写 ROS1 驱动获取数据。
+
+## ROS Topics
 
 ### Subscribed Topics
 

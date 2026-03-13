@@ -1,6 +1,10 @@
 build
 install
 log
+devel
 
 *.trt
 *.onnx
+
+.catkin_workspace
+
