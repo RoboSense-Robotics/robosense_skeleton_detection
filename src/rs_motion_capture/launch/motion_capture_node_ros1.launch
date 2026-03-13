@@ -1,0 +1,23 @@
+<launch>
+  <!-- 参数 -->
+  <arg name="collector" default="zed" doc="采集员"/>
+  <arg name="calib_mode" default="false" doc="是否进入标定模式"/>
+  <arg name="check_mode" default="false" doc="是否进入标定检测模式"/>
+  <arg name="glove_type" default="noiton" doc="动捕手套类型，支持 noiton, manus"/>
+  <arg name="config" default="config/config.yaml" doc="配置文件路径"/>
+  <arg name="ws_center_z" default="1.35" doc="工作台高度"/>
+  <arg name="rviz_config" default="$(find rs_motion_capture)/config/rviz/motion_capture_ros1.rviz" doc="RViz 配置文件路径"/>
+
+  <!-- motion_capture 节点 -->
+  <node pkg="rs_motion_capture" type="motion_capture_node_ros1" name="motion_capture" output="screen">
+    <param name="calib_mode" value="$(arg calib_mode)"/>
+    <param name="check_mode" value="$(arg check_mode)"/>
+    <param name="collector" value="$(arg collector)"/>
+    <param name="glove_type" value="$(arg glove_type)"/>
+    <param name="config" value="$(arg config)"/>
+    <param name="ws_center_z" value="$(arg ws_center_z)"/>
+  </node>
+
+  <!-- RViz1 可视化 -->
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(arg rviz_config)" output="screen"/>
+</launch>

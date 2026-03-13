@@ -1,0 +1,472 @@
+//
+// ROS1 RvizDisplay 实现 - 发布骨架 Marker 与 2D 图像到 RViz
+//
+
+#include "rviz_display/ros_rviz_display.h"
+#include <cuda_runtime.h>
+#include <filesystem>
+#include <opencv2/imgcodecs.hpp>
+#include <spdlog/spdlog.h>
+
+namespace fs = std::filesystem;
+
+namespace robosense::motion_capture {
+
+namespace {
+// 将纳秒时间戳转换为 ros::Time
+ros::Time toRosTime(uint64_t timestamp_ns) {
+  return ros::Time(static_cast<uint32_t>(timestamp_ns / 1000000000ULL),
+                   static_cast<uint32_t>(timestamp_ns % 1000000000ULL));
+}
+}  // namespace
+
+void RosRvizDisplay::init() {
+  const auto& rviz_node = rally::ConfigureManager::getInstance().getCfgNode()["ros"]["rviz"];
+
+  change_coord_ = rviz_node["change_coord"].as<bool>();
+  const auto& global_cfg_node = rally::ConfigureManager::getInstance().getCfgNode();
+  auto ws_center_z = global_cfg_node["ws_center_z"].as<float>();
+  auto world_center_x = global_cfg_node["world_center_x"].as<float>();
+  auto world_center_y = global_cfg_node["world_center_y"].as<float>();
+  auto world_center_z = global_cfg_node["world_center_z"].as<float>();
+  world_x_bias_ = world_center_x;
+  world_y_bias_ = world_center_y;
+  world_z_bias_ = world_center_z - ws_center_z;
+
+  controller_.left_vis_enable = rviz_node["left_ac_vis"]["enable"].as<bool>();
+  controller_.left_pd_enable = rviz_node["left_ac_vis"]["left_ac_pd"]["enable"].as<bool>();
+  controller_.right_vis_enable = rviz_node["right_ac_vis"]["enable"].as<bool>();
+  controller_.right_pd_enable = rviz_node["right_ac_vis"]["right_ac_pd"]["enable"].as<bool>();
+  controller_.fusion_vis_enable = rviz_node["fusion_vis"]["enable"].as<bool>();
+  controller_.fusion_3d_marker_enable = rviz_node["fusion_vis"]["fusion_3d"]["enable"].as<bool>();
+
+  // ROS1: 使用 advertise 替代 create_publisher
+  left_pd_pub_ = nh_.advertise<sensor_msgs::Image>(
+      rviz_node["left_ac_vis"]["left_ac_pd"]["topic"].as<std::string>(), 10);
+  right_pd_pub_ = nh_.advertise<sensor_msgs::Image>(
+      rviz_node["right_ac_vis"]["right_ac_pd"]["topic"].as<std::string>(), 10);
+  fusion_3d_marker_pub_ = nh_.advertise<visualization_msgs::MarkerArray>(
+      rviz_node["fusion_vis"]["fusion_3d"]["topic"].as<std::string>(), 10);
+
+  ac_name_color_map_[rally::CameraEnum::left_ac_camera] = createColor(0.f, 1.f, 0.f, 1.f);
+  ac_name_color_map_[rally::CameraEnum::right_ac_camera] = createColor(0.f, 0.f, 1.f, 1.f);
+  ac_name_color_map_[rally::CameraEnum::fusion] = createColor(1.f, 0.f, 0.f, 1.f);
+
+  uint32_t image_width = SensorManager::getInstance().getWidth(rally::CameraEnum::left_ac_camera);
+  uint32_t image_height = SensorManager::getInstance().getHeight(rally::CameraEnum::left_ac_camera);
+  ori_img_data_.resize(image_width * image_height * 3, 0);
+
+  save_root_path_ = rviz_node["save_root_path"].as<std::string>();
+  left_pd_dump_ = rviz_node["left_ac_vis"]["left_ac_pd"]["dump"].as<bool>();
+  left_pd_dir_ =
+      (fs::path(save_root_path_) / rviz_node["left_ac_vis"]["left_ac_pd"]["dump_dir"].as<std::string>() /
+       "left_camera")
+          .string();
+  if (!fs::exists(left_pd_dir_) && controller_.left_vis_enable && left_pd_dump_) {
+    fs::create_directories(left_pd_dir_);
+  }
+  right_pd_dump_ = rviz_node["right_ac_vis"]["right_ac_pd"]["dump"].as<bool>();
+  right_pd_dir_ =
+      (fs::path(save_root_path_) / rviz_node["right_ac_vis"]["right_ac_pd"]["dump_dir"].as<std::string>() /
+       "right_camera")
+          .string();
+  if (!fs::exists(right_pd_dir_) && controller_.right_vis_enable && right_pd_dump_) {
+    fs::create_directories(right_pd_dir_);
+  }
+
+  worker_->bind([this](const Msg::Ptr& msg_ptr) { display(msg_ptr); });
+}
+
+void RosRvizDisplay::display(const Msg::Ptr& msg_ptr) {
+  if (controller_.left_vis_enable && controller_.left_pd_enable) {
+    displayPDResult(msg_ptr, rally::CameraEnum::left_ac_camera);
+  }
+  if (controller_.right_vis_enable && controller_.right_pd_enable) {
+    displayPDResult(msg_ptr, rally::CameraEnum::right_ac_camera);
+  }
+  if (controller_.fusion_vis_enable && controller_.fusion_3d_marker_enable) {
+    display3DMarker(msg_ptr, rally::CameraEnum::fusion);
+  }
+}
+
+void RosRvizDisplay::displayPDResult(const Msg::Ptr& msg_ptr, rally::CameraEnum camera_enum) {
+  const auto& inter_res_ptr = msg_ptr->internal_result_ptr;
+  const auto& pc_z = inter_res_ptr->image_projected_pc_depth_map[camera_enum];
+  const auto& pc_ptr = inter_res_ptr->image_projected_pc_map[camera_enum];
+  if (!pc_ptr || !pc_z) {
+    return;
+  }
+
+  cv::Mat image;
+  cv::Mat ori_image = camera_enum == rally::CameraEnum::left_ac_camera
+                          ? inter_res_ptr->left_undistort_image
+                          : inter_res_ptr->right_undistort_image;
+  cv::cvtColor(ori_image, image, cv::COLOR_RGB2BGR);
+
+  if (msg_ptr->internal_result_ptr->qr_code_is_detected_map[camera_enum] == 1) {
+    const auto& center = msg_ptr->internal_result_ptr->center_map[camera_enum];
+    cv::circle(image, cv::Point(static_cast<int>(center.x), static_cast<int>(center.y)), 20,
+               cv::Scalar(0, 0, 255), 10);
+  }
+
+  const auto& points = inter_res_ptr->image_all_pose_points_map[camera_enum];
+  for (const auto& joint_link : halpe_26_joint_links_) {
+    auto idx1 = static_cast<size_t>(joint_link.first);
+    auto idx2 = static_cast<size_t>(joint_link.second);
+    if (idx1 < points.size() && idx2 < points.size() && points[idx1].valid && points[idx2].valid) {
+      cv::line(image, cv::Point(int(points[idx1].x), int(points[idx1].y)),
+               cv::Point(int(points[idx2].x), int(points[idx2].y)), cv::Scalar(0, 255, 0), 1,
+               cv::LINE_AA);
+    }
+  }
+
+  for (auto point : points) {
+    if (point.valid) {
+      cv::circle(image, cv::Point(int(point.x), int(point.y)), 1, cv::Scalar(0, 0, 255), 1,
+                 cv::LINE_AA);
+    }
+  }
+
+  cv::Mat depth_overlay = image;
+
+  const auto& arm_keypoints = inter_res_ptr->image_arm_key_points_map[camera_enum];
+  for (size_t idx = 0; idx < display_points_idx_.size(); ++idx) {
+    int i = display_points_idx_[idx];
+    if (!arm_keypoints[i].valid) {
+      continue;
+    }
+    cv::circle(depth_overlay,
+               cv::Point(static_cast<int>(arm_keypoints[i].x), static_cast<int>(arm_keypoints[i].y)),
+               5, cv::Scalar(255, 0, 255), -1);
+    std::string label = std::to_string(idx);
+    cv::putText(depth_overlay, label,
+                cv::Point(static_cast<int>(arm_keypoints[i].x) + 5,
+                          static_cast<int>(arm_keypoints[i].y) - 5),
+                cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 0, 255), 2);
+  }
+
+  for (const auto& line : line_set_) {
+    int i = line.first;
+    int j = line.second;
+    if (!arm_keypoints[i].valid || !arm_keypoints[j].valid) {
+      continue;
+    }
+    cv::line(depth_overlay,
+             cv::Point(static_cast<int>(arm_keypoints[i].x), static_cast<int>(arm_keypoints[i].y)),
+             cv::Point(static_cast<int>(arm_keypoints[j].x), static_cast<int>(arm_keypoints[j].y)),
+             cv::Scalar(255, 0, 255), 2);
+  }
+
+  cv::putText(depth_overlay, "Depth: Blue(near) -> Red(far)", cv::Point(20, 30),
+              cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 255, 255), 2);
+  cv::putText(depth_overlay, "Pose Keypoints: Green", cv::Point(20, 60), cv::FONT_HERSHEY_SIMPLEX,
+              0.7, cv::Scalar(0, 255, 0), 2);
+  cv::putText(depth_overlay, "Arm Keypoints: Pink", cv::Point(20, 90), cv::FONT_HERSHEY_SIMPLEX, 0.7,
+              cv::Scalar(255, 0, 255), 2);
+  cv::putText(depth_overlay, "TimeStamp: " + std::to_string(msg_ptr->timestamp), cv::Point(20, 150),
+              cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 0, 255), 2);
+
+  std_msgs::Header header;
+  header.stamp = toRosTime(msg_ptr->timestamp);
+  header.frame_id = frame_id_;
+  sensor_msgs::ImagePtr image_msg = cv_bridge::CvImage(header, "bgr8", depth_overlay).toImageMsg();
+
+  if (camera_enum == rally::CameraEnum::left_ac_camera) {
+    left_pd_pub_.publish(image_msg);
+    if (left_pd_dump_) {
+      cv::imwrite(left_pd_dir_ + "/" + std::to_string(msg_ptr->timestamp) + ".jpg", depth_overlay);
+    }
+  } else if (camera_enum == rally::CameraEnum::right_ac_camera) {
+    right_pd_pub_.publish(image_msg);
+    if (right_pd_dump_) {
+      cv::imwrite(right_pd_dir_ + "/" + std::to_string(msg_ptr->timestamp) + ".jpg", depth_overlay);
+    }
+  } else {
+    spdlog::warn("Invalid camera enum for display PD result.");
+  }
+}
+
+void RosRvizDisplay::display3DMarker(const Msg::Ptr& msg_ptr, rally::CameraEnum camera_enum) {
+  const auto& inter_res_ptr = msg_ptr->internal_result_ptr;
+  if (camera_enum == rally::CameraEnum::left_ac_camera ||
+      camera_enum == rally::CameraEnum::right_ac_camera) {
+    if (inter_res_ptr->world_arm_key_points_map[camera_enum].empty()) {
+      return;
+    }
+  } else {
+    if (inter_res_ptr->fusion_optimized_world_arm_key_points.empty()) {
+      return;
+    }
+  }
+
+  ros::Time stamp = toRosTime(msg_ptr->timestamp);
+
+  visualization_msgs::MarkerArray marker_array;
+  visualization_msgs::Marker points_marker;
+  points_marker.header.frame_id = frame_id_;
+  points_marker.header.stamp = stamp;
+  points_marker.ns = "pose_points";
+  points_marker.action = visualization_msgs::Marker::ADD;
+  points_marker.pose.orientation.w = 1.0;
+  points_marker.id = 0;
+  points_marker.type = visualization_msgs::Marker::SPHERE_LIST;
+  points_marker.scale.x = 0.02;
+  points_marker.scale.y = 0.02;
+  points_marker.scale.z = 0.02;
+  points_marker.color = ac_name_color_map_.at(camera_enum);
+
+  visualization_msgs::Marker lines_marker;
+  lines_marker.header.frame_id = frame_id_;
+  lines_marker.header.stamp = stamp;
+  lines_marker.ns = "pose_lines";
+  lines_marker.action = visualization_msgs::Marker::ADD;
+  lines_marker.pose.orientation.w = 1.0;
+  lines_marker.id = 1;
+  lines_marker.type = visualization_msgs::Marker::LINE_LIST;
+  lines_marker.scale.x = 0.01;
+  lines_marker.color = ac_name_color_map_.at(camera_enum);
+
+  std::vector<visualization_msgs::Marker> text_markers;
+  const float scale_factor = 1.0;
+
+  const auto& pose_3d =
+      (camera_enum == rally::CameraEnum::fusion
+           ? inter_res_ptr->fusion_optimized_world_arm_key_points
+           : inter_res_ptr->world_arm_key_points_map[camera_enum]);
+
+  for (size_t idx = 0; idx < display_points_idx_.size(); ++idx) {
+    int i = display_points_idx_[idx];
+    if (!pose_3d[i].valid) {
+      continue;
+    }
+    geometry_msgs::Point p;
+    if (change_coord_) {
+      p.x = (pose_3d[i].x - world_x_bias_) * scale_factor;
+      p.y = (pose_3d[i].y - world_y_bias_) * scale_factor;
+      p.z = (pose_3d[i].z - world_z_bias_) * scale_factor;
+    } else {
+      p.x = pose_3d[i].x * scale_factor;
+      p.y = pose_3d[i].y * scale_factor;
+      p.z = pose_3d[i].z * scale_factor;
+    }
+    points_marker.points.push_back(p);
+
+    visualization_msgs::Marker text_marker;
+    text_marker.header.frame_id = frame_id_;
+    text_marker.header.stamp = stamp;
+    text_marker.ns = "pose_text";
+    text_marker.action = visualization_msgs::Marker::ADD;
+    text_marker.id = static_cast<int>(i + 10);
+    text_marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+    text_marker.pose.position = p;
+    text_marker.pose.position.z += 0.1;
+    text_marker.pose.orientation.w = 1.0;
+    text_marker.scale.z = 0.1;
+    text_marker.color = ac_name_color_map_.at(camera_enum);
+    text_marker.text = std::to_string(idx);
+    text_markers.push_back(text_marker);
+  }
+
+  for (const auto& line : line_set_) {
+    int i = line.first;
+    int j = line.second;
+    geometry_msgs::Point pi, pj;
+    if (!pose_3d[i].valid || !pose_3d[j].valid) {
+      continue;
+    }
+    if (change_coord_) {
+      pi.x = (pose_3d[i].x - world_x_bias_) * scale_factor;
+      pi.y = (pose_3d[i].y - world_y_bias_) * scale_factor;
+      pi.z = (pose_3d[i].z - world_z_bias_) * scale_factor;
+      pj.x = (pose_3d[j].x - world_x_bias_) * scale_factor;
+      pj.y = (pose_3d[j].y - world_y_bias_) * scale_factor;
+      pj.z = (pose_3d[j].z - world_z_bias_) * scale_factor;
+    } else {
+      pi.x = pose_3d[i].x * scale_factor;
+      pi.y = pose_3d[i].y * scale_factor;
+      pi.z = pose_3d[i].z * scale_factor;
+      pj.x = pose_3d[j].x * scale_factor;
+      pj.y = pose_3d[j].y * scale_factor;
+      pj.z = pose_3d[j].z * scale_factor;
+    }
+    lines_marker.points.push_back(pi);
+    lines_marker.points.push_back(pj);
+  }
+
+  visualization_msgs::Marker origin_marker;
+  origin_marker.header.frame_id = frame_id_;
+  origin_marker.header.stamp = stamp;
+  origin_marker.ns = "origin_axes";
+  origin_marker.action = visualization_msgs::Marker::ADD;
+  origin_marker.id = 2;
+  origin_marker.type = visualization_msgs::Marker::LINE_LIST;
+  origin_marker.scale.x = 0.02;
+  origin_marker.color.a = 1.0;
+
+  geometry_msgs::Point origin;
+  origin.x = 0.0;
+  origin.y = 0.0;
+  origin.z = 0.0;
+
+  geometry_msgs::Point x_axis;
+  x_axis.x = 0.3;
+  x_axis.y = 0.0;
+  x_axis.z = 0.0;
+  origin_marker.points.push_back(origin);
+  origin_marker.points.push_back(x_axis);
+  origin_marker.colors.push_back(createColor(1.0, 0.0, 0.0, 1.0));
+  origin_marker.colors.push_back(createColor(1.0, 0.0, 0.0, 1.0));
+
+  geometry_msgs::Point y_axis;
+  y_axis.x = 0.0;
+  y_axis.y = 0.3;
+  y_axis.z = 0.0;
+  origin_marker.points.push_back(origin);
+  origin_marker.points.push_back(y_axis);
+  origin_marker.colors.push_back(createColor(0.0, 1.0, 0.0, 1.0));
+  origin_marker.colors.push_back(createColor(0.0, 1.0, 0.0, 1.0));
+
+  geometry_msgs::Point z_axis;
+  z_axis.x = 0.0;
+  z_axis.y = 0.0;
+  z_axis.z = 0.3;
+  origin_marker.points.push_back(origin);
+  origin_marker.points.push_back(z_axis);
+  origin_marker.colors.push_back(createColor(0.0, 0.0, 1.0, 1.0));
+  origin_marker.colors.push_back(createColor(0.0, 0.0, 1.0, 1.0));
+
+  const auto& right_pose =
+      (camera_enum == rally::CameraEnum::fusion
+           ? inter_res_ptr->fusion_optimized_world_end_pose.first
+           : inter_res_ptr->world_end_pose_map[camera_enum].first);
+  Eigen::Vector3f right_position = right_pose.first;
+  Eigen::Quaternionf right_quat = right_pose.second;
+
+  visualization_msgs::Marker right_axes_marker;
+  right_axes_marker.header.frame_id = frame_id_;
+  right_axes_marker.header.stamp = stamp;
+  right_axes_marker.ns = "right_hand_axes";
+  right_axes_marker.action = visualization_msgs::Marker::ADD;
+  right_axes_marker.id = 3;
+  right_axes_marker.type = visualization_msgs::Marker::LINE_LIST;
+  right_axes_marker.scale.x = 0.02;
+  right_axes_marker.color.a = 1.0;
+
+  geometry_msgs::Point right_origin;
+  if (change_coord_) {
+    right_origin.x = right_position.x() - world_x_bias_;
+    right_origin.y = right_position.y() - world_y_bias_;
+    right_origin.z = right_position.z() - world_z_bias_;
+  } else {
+    right_origin.x = right_position.x();
+    right_origin.y = right_position.y();
+    right_origin.z = right_position.z();
+  }
+
+  Eigen::Matrix3f right_R = right_quat.toRotationMatrix();
+  const double axis_length = 0.2;
+
+  Eigen::Vector3f right_x_dir = right_R.col(0) * axis_length;
+  geometry_msgs::Point right_x_axis;
+  right_x_axis.x = right_origin.x + right_x_dir.x();
+  right_x_axis.y = right_origin.y + right_x_dir.y();
+  right_x_axis.z = right_origin.z + right_x_dir.z();
+  right_axes_marker.points.push_back(right_origin);
+  right_axes_marker.points.push_back(right_x_axis);
+  right_axes_marker.colors.push_back(createColor(1.0, 0.0, 0.0, 1.0));
+  right_axes_marker.colors.push_back(createColor(1.0, 0.0, 0.0, 1.0));
+
+  Eigen::Vector3f right_y_dir = right_R.col(1) * axis_length;
+  geometry_msgs::Point right_y_axis;
+  right_y_axis.x = right_origin.x + right_y_dir.x();
+  right_y_axis.y = right_origin.y + right_y_dir.y();
+  right_y_axis.z = right_origin.z + right_y_dir.z();
+  right_axes_marker.points.push_back(right_origin);
+  right_axes_marker.points.push_back(right_y_axis);
+  right_axes_marker.colors.push_back(createColor(0.0, 1.0, 0.0, 1.0));
+  right_axes_marker.colors.push_back(createColor(0.0, 1.0, 0.0, 1.0));
+
+  Eigen::Vector3f right_z_dir = right_R.col(2) * axis_length;
+  geometry_msgs::Point right_z_axis;
+  right_z_axis.x = right_origin.x + right_z_dir.x();
+  right_z_axis.y = right_origin.y + right_z_dir.y();
+  right_z_axis.z = right_origin.z + right_z_dir.z();
+  right_axes_marker.points.push_back(right_origin);
+  right_axes_marker.points.push_back(right_z_axis);
+  right_axes_marker.colors.push_back(createColor(0.0, 0.0, 1.0, 1.0));
+  right_axes_marker.colors.push_back(createColor(0.0, 0.0, 1.0, 1.0));
+
+  auto left_pose =
+      (camera_enum == rally::CameraEnum::fusion
+           ? inter_res_ptr->fusion_optimized_world_end_pose.second
+           : inter_res_ptr->world_end_pose_map[camera_enum].second);
+  Eigen::Vector3f left_position = left_pose.first;
+  Eigen::Quaternionf left_quat = left_pose.second;
+
+  visualization_msgs::Marker left_axes_marker;
+  left_axes_marker.header.frame_id = frame_id_;
+  left_axes_marker.header.stamp = stamp;
+  left_axes_marker.ns = "left_hand_axes";
+  left_axes_marker.action = visualization_msgs::Marker::ADD;
+  left_axes_marker.id = 4;
+  left_axes_marker.type = visualization_msgs::Marker::LINE_LIST;
+  left_axes_marker.scale.x = 0.02;
+  left_axes_marker.color.a = 1.0;
+
+  geometry_msgs::Point left_origin;
+  if (change_coord_) {
+    left_origin.x = left_position.x() - world_x_bias_;
+    left_origin.y = left_position.y() - world_y_bias_;
+    left_origin.z = left_position.z() - world_z_bias_;
+  } else {
+    left_origin.x = left_position.x();
+    left_origin.y = left_position.y();
+    left_origin.z = left_position.z();
+  }
+
+  Eigen::Matrix3f left_R = left_quat.toRotationMatrix();
+  Eigen::Vector3f left_x_dir = left_R.col(0) * axis_length;
+  geometry_msgs::Point left_x_axis;
+  left_x_axis.x = left_origin.x + left_x_dir.x();
+  left_x_axis.y = left_origin.y + left_x_dir.y();
+  left_x_axis.z = left_origin.z + left_x_dir.z();
+  left_axes_marker.points.push_back(left_origin);
+  left_axes_marker.points.push_back(left_x_axis);
+  left_axes_marker.colors.push_back(createColor(1.0, 0.0, 0.0, 1.0));
+  left_axes_marker.colors.push_back(createColor(1.0, 0.0, 0.0, 1.0));
+
+  Eigen::Vector3f left_y_dir = left_R.col(1) * axis_length;
+  geometry_msgs::Point left_y_axis;
+  left_y_axis.x = left_origin.x + left_y_dir.x();
+  left_y_axis.y = left_origin.y + left_y_dir.y();
+  left_y_axis.z = left_origin.z + left_y_dir.z();
+  left_axes_marker.points.push_back(left_origin);
+  left_axes_marker.points.push_back(left_y_axis);
+  left_axes_marker.colors.push_back(createColor(0.0, 1.0, 0.0, 1.0));
+  left_axes_marker.colors.push_back(createColor(0.0, 1.0, 0.0, 1.0));
+
+  Eigen::Vector3f left_z_dir = left_R.col(2) * axis_length;
+  geometry_msgs::Point left_z_axis;
+  left_z_axis.x = left_origin.x + left_z_dir.x();
+  left_z_axis.y = left_origin.y + left_z_dir.y();
+  left_z_axis.z = left_origin.z + left_z_dir.z();
+  left_axes_marker.points.push_back(left_origin);
+  left_axes_marker.points.push_back(left_z_axis);
+  left_axes_marker.colors.push_back(createColor(0.0, 0.0, 1.0, 1.0));
+  left_axes_marker.colors.push_back(createColor(0.0, 0.0, 1.0, 1.0));
+
+  marker_array.markers.push_back(points_marker);
+  marker_array.markers.push_back(lines_marker);
+  marker_array.markers.push_back(origin_marker);
+  marker_array.markers.push_back(right_axes_marker);
+  marker_array.markers.push_back(left_axes_marker);
+  for (const auto& marker : text_markers) {
+    marker_array.markers.push_back(marker);
+  }
+
+  if (camera_enum == rally::CameraEnum::fusion) {
+    fusion_3d_marker_pub_.publish(marker_array);
+  }
+}
+
+}  // namespace robosense::motion_capture

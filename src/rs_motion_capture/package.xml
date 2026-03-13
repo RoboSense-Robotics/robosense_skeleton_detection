@@ -3,27 +3,32 @@
 <package format="3">
     <name>rs_motion_capture</name>
     <version>0.0.0</version>
-    <description>rs motion capture package</description>
+    <description>rs motion capture package - support ROS1 and ROS2</description>
     <maintainer email="your_email@example.com">Your Name</maintainer>
     <license>TODO: License declaration</license>
 
-    <buildtool_depend>ament_cmake</buildtool_depend>
+    <buildtool_depend condition="$ROS_VERSION == 1">catkin</buildtool_depend>
+    <buildtool_depend condition="$ROS_VERSION == 2">ament_cmake</buildtool_depend>
 
-    <depend>rclcpp</depend>
+    <depend condition="$ROS_VERSION == 1">roscpp</depend>
+    <depend condition="$ROS_VERSION == 2">rclcpp</depend>
+
     <depend>sensor_msgs</depend>
     <depend>cv_bridge</depend>
     <depend>image_transport</depend>
     <depend>pcl_conversions</depend>
     <depend>pcl_ros</depend>
+    <depend>std_msgs</depend>
+    <depend>geometry_msgs</depend>
     <depend>yaml-cpp</depend>
     <depend>visualization_msgs</depend>
-    <depend>ament_index_cpp</depend>
 
+    <depend condition="$ROS_VERSION == 2">ament_index_cpp</depend>
 
-    <test_depend>ament_lint_auto</test_depend>
-    <test_depend>ament_lint_common</test_depend>
+    <test_depend condition="$ROS_VERSION == 2">ament_lint_auto</test_depend>
+    <test_depend condition="$ROS_VERSION == 2">ament_lint_common</test_depend>
 
     <export>
-        <build_type>ament_cmake</build_type>
+        <build_type condition="$ROS_VERSION == 2">ament_cmake</build_type>
     </export>
 </package>
